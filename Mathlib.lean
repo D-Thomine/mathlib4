@@ -753,6 +753,7 @@ import Mathlib.Algebra.Order.Antidiag.Nat
 import Mathlib.Algebra.Order.Antidiag.Pi
 import Mathlib.Algebra.Order.Antidiag.Prod
 import Mathlib.Algebra.Order.Archimedean.Basic
+import Mathlib.Algebra.Order.Archimedean.Class
 import Mathlib.Algebra.Order.Archimedean.Hom
 import Mathlib.Algebra.Order.Archimedean.IndicatorCard
 import Mathlib.Algebra.Order.Archimedean.Submonoid
@@ -828,6 +829,7 @@ import Mathlib.Algebra.Order.GroupWithZero.Bounds
 import Mathlib.Algebra.Order.GroupWithZero.Canonical
 import Mathlib.Algebra.Order.GroupWithZero.Finset
 import Mathlib.Algebra.Order.GroupWithZero.InvNonnegClass
+import Mathlib.Algebra.Order.GroupWithZero.Lex
 import Mathlib.Algebra.Order.GroupWithZero.Submonoid
 import Mathlib.Algebra.Order.GroupWithZero.Synonym
 import Mathlib.Algebra.Order.GroupWithZero.Unbundled
@@ -861,6 +863,7 @@ import Mathlib.Algebra.Order.Monoid.Basic
 import Mathlib.Algebra.Order.Monoid.Canonical.Basic
 import Mathlib.Algebra.Order.Monoid.Canonical.Defs
 import Mathlib.Algebra.Order.Monoid.Defs
+import Mathlib.Algebra.Order.Monoid.Lex
 import Mathlib.Algebra.Order.Monoid.NatCast
 import Mathlib.Algebra.Order.Monoid.OrderDual
 import Mathlib.Algebra.Order.Monoid.Prod
@@ -3803,6 +3806,7 @@ import Mathlib.GroupTheory.QuotientGroup.Basic
 import Mathlib.GroupTheory.QuotientGroup.Defs
 import Mathlib.GroupTheory.QuotientGroup.Finite
 import Mathlib.GroupTheory.Rank
+import Mathlib.GroupTheory.RegularWreathProduct
 import Mathlib.GroupTheory.Schreier
 import Mathlib.GroupTheory.SchurZassenhaus
 import Mathlib.GroupTheory.SemidirectProduct
@@ -4886,6 +4890,7 @@ import Mathlib.Order.Preorder.Chain
 import Mathlib.Order.Preorder.Finite
 import Mathlib.Order.PrimeIdeal
 import Mathlib.Order.PrimeSeparator
+import Mathlib.Order.Prod.Lex.Hom
 import Mathlib.Order.PropInstances
 import Mathlib.Order.Radical
 import Mathlib.Order.Rel.GaloisConnection
@@ -5028,11 +5033,14 @@ import Mathlib.RepresentationTheory.Character
 import Mathlib.RepresentationTheory.Coinduced
 import Mathlib.RepresentationTheory.Coinvariants
 import Mathlib.RepresentationTheory.FDRep
-import Mathlib.RepresentationTheory.GroupCohomology.Basic
-import Mathlib.RepresentationTheory.GroupCohomology.Functoriality
-import Mathlib.RepresentationTheory.GroupCohomology.Hilbert90
-import Mathlib.RepresentationTheory.GroupCohomology.LowDegree
-import Mathlib.RepresentationTheory.GroupCohomology.Resolution
+import Mathlib.RepresentationTheory.FiniteIndex
+import Mathlib.RepresentationTheory.Homological.GroupCohomology.Basic
+import Mathlib.RepresentationTheory.Homological.GroupCohomology.Functoriality
+import Mathlib.RepresentationTheory.Homological.GroupCohomology.Hilbert90
+import Mathlib.RepresentationTheory.Homological.GroupCohomology.LowDegree
+import Mathlib.RepresentationTheory.Homological.GroupHomology.Basic
+import Mathlib.RepresentationTheory.Homological.GroupHomology.Functoriality
+import Mathlib.RepresentationTheory.Homological.Resolution
 import Mathlib.RepresentationTheory.Induced
 import Mathlib.RepresentationTheory.Invariants
 import Mathlib.RepresentationTheory.Maschke

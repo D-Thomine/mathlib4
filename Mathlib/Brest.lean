@@ -57,5 +57,24 @@ lemma limit_comp3 (f : ℝ → ℝ) (u : ℕ → ℝ) (x₀ : ℝ) (hu : seq_lim
   --solve_by_elim
   sorry
 
+/-- L'accès à Mathlib peut trivialiser de nombreuses démonstrations. -/
+lemma exists_real_gt1 : ∀ x : ℝ, ∃ y, x > y := by
+  --intro x
+  --use x+1
+  --exact lt_add_one x
+  sorry
 
+lemma exists_real_gt : ∀ x : ℝ, ∃ y, x < y :=
+  exists_gt
+
+/-- L'état tactique tend à favoriser un raisonnement par manipulation du but. -/
+lemma implication {P Q : Prop} (h : P) (h' : P → Q) : Q := by
+  apply h'
+  exact h
+
+/-- Manipulations sans tactiques. -/
+lemma a_remarkable_identity (a b : ℝ) (h : a ^ 2 + 2 * a * b + b ^ 2 = 1) : (a + b) ^ 2 = 1 := by
+  rw [pow_two, add_mul, mul_add, mul_add, ← pow_two, ← pow_two, mul_comm b a, add_assoc (a^2),
+    ← add_assoc (a*b), ← two_mul, ← add_assoc, ← mul_assoc]
+  exact h
 end Brest

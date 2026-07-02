@@ -60,25 +60,6 @@ open Filter Measurable MeasureTheory Nat Set
 
 open Measure
 
-
-lemma _root_.Filter.EventuallyEq.countable_preimage {α β : Type*} {l : Filter α}
-    [CountableInterFilter l] [Countable β] {f g : α → β}
-    (h : ∀ x, { y | f y = x } =ᶠ[l] { y | g y = x }) :
-    f =ᶠ[l] g := by
-  apply eventuallyEq_iff_exists_mem.2
-  refine ⟨⋂ x, univ \ symmDiff { y | f y = x } { y | g y = x }, ?_, ?_⟩
-  · refine countable_iInter_mem.2 fun x ↦ ?_
-    filter_upwards [eventuallyEq_set.1 (h x)]
-    intro y hy
-    simp only [Set.mem_sdiff, mem_univ, mem_symmDiff, mem_setOf_eq, not_or, not_and, not_not,
-      true_and] at hy ⊢
-    exact ⟨hy.1, hy.2⟩
-  · intro y hy
-    simp only [symmDiff, sup_eq_union, mem_iInter, Set.mem_sdiff, mem_univ, mem_union, mem_setOf_eq,
-      not_or, not_and, not_not, true_and] at hy ⊢
-    exact (hy (g y)).2 (by rfl)
-
-
 variable {α : Type*} {f : α → α} {s : Set α} {x : α}
 
 /-- `HitTime f s` is the function which to each point `x` associates the first positive time `n`
@@ -180,7 +161,7 @@ lemma _root_.MeasureTheory.Measure.QuasiMeasurePreserving.aemeasurable_hitTime
     (hf : QuasiMeasurePreserving f μ μ) (hs : NullMeasurableSet s μ) :
     AEMeasurable (HitTime f s) μ := by
   obtain ⟨t, s_t, ht, t_μ⟩ := hs.exists_measurable_subset_ae_eq
-  refine ⟨HitTime f t, hf.measurable.hitTime ht, EventuallyEq.countable_preimage fun n ↦ ?_⟩
+  refine ⟨HitTime f t, hf.measurable.hitTime ht, EventuallyEq.iff_eventuallyEq_preimage.2 fun n ↦ ?_⟩
   by_cases n₀ : n = 0
   · rw [n₀, hitTime_zero_set_eq_iInter, hitTime_zero_set_eq_iInter]
     refine Filter.EventuallyEq.countable_iInter fun n ↦ ?_

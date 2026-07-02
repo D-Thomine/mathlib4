@@ -144,6 +144,22 @@ theorem EventuallyEq.countable_bInter {ι : Type*} {S : Set ι} (hS : S.Countabl
 @[deprecated (since := "2026-03-03")] alias _root_.EventuallyEq.countable_bInter :=
   EventuallyEq.countable_bInter
 
+theorem EventuallyEq.iff_eventuallyEq_preimage [Countable β] {f g : α → β} :
+    f =ᶠ[l] g ↔ ∀ y, { x | f x = y } =ᶠ[l] { x | g x = y } := by
+  refine ⟨fun h x ↦ eventuallyEq_set.2 ?_, fun h ↦ eventuallyEq_iff_exists_mem.2 ?_⟩
+  · filter_upwards [h] with y hy
+    rw [hy]
+  · refine ⟨⋂ x, univ \ symmDiff { y | f y = x } { y | g y = x }, ?_, ?_⟩
+    · refine countable_iInter_mem.2 fun x ↦ ?_
+      filter_upwards [eventuallyEq_set.1 (h x)] with y hy
+      simp only [Set.mem_sdiff, mem_univ, mem_symmDiff, mem_setOf_eq, not_or, not_and, not_not,
+        true_and] at hy ⊢
+      exact ⟨hy.1, hy.2⟩
+    · intro y hy
+      simp only [symmDiff, sup_eq_union, mem_iInter, Set.mem_sdiff, mem_univ, mem_union,
+        mem_setOf_eq, not_or, not_and, not_not, true_and] at hy ⊢
+      exact (hy (g y)).2 (by rfl)
+
 /-- Construct a filter with countable intersection property. This constructor deduces
 `Filter.univ_sets` and `Filter.inter_sets` from the countable intersection property. -/
 def ofCountableInter (l : Set (Set α))

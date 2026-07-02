@@ -6,7 +6,7 @@ Authors: Damien Thomine
 module
 
 public import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
-public import Mathlib.MeasureTheory.Integral.Lebesgue.Basic
+public import Mathlib.MeasureTheory.Integral.Lebesgue.Map
 public import Mathlib.Dynamics.Ergodic.MeasurePreserving
 
 /-!
@@ -260,24 +260,101 @@ open scoped ENNReal
 
 /-- Put this lemma somewhere else. -/
 lemma lintegral_indicator_mul_right {t : Set α} (ht : MeasurableSet t) (f g : α → ℝ≥0∞) :
-    ∫⁻ x in t, (f x) * (g x) ∂μ = ∫⁻ x, (f x) * (t.indicator g x) ∂μ := by
+    ∫⁻ x in t, (f x) * g x ∂μ = ∫⁻ x, (f x) * t.indicator g x ∂μ := by
   rw [← lintegral_indicator ht]; congr 1; ext x
   exact indicator_mul_right t f g
 
-lemma test (u v w : α → ℝ≥0∞) (hf : MeasurePreserving f μ μ) (hs : MeasurableSet s)
-    (hu : ∀ (z : α → ℝ≥0∞), ∫⁻ x, (u x) * (z x) ∂μ = ∫⁻ x, (v x) * (z x) ∂μ
-      + ∫⁻ x, (u x) * (z (f x)) ∂μ) :
-    ∫⁻ x in s, (u x) * (w x) ∂μ = ∫⁻ x in s, (v x) * (w x) ∂μ
-      + ∫⁻ x in {y | HitTime f s y = 1} ∩ s, (u x) * (w (f x)) ∂μ
-      + ∫⁻ x in {y | HitTime f s y = 1} ∩ sᶜ, (u x) * (w (f x)) ∂μ := by
-  rw [lintegral_indicator_mul_right hs u w, hu (s.indicator w),
-    ← lintegral_indicator_mul_right hs v w, add_assoc]
-  congr 1
-  simp only [← indicator_comp_right, ← lintegral_indicator_mul_right (hf.measurable hs) u (w ∘ f),
-    hitTime_one_eq_preimage]
-  rw [← lintegral_union]
-  · simp
-  · exact .inter (hf.measurable hs) (by measurability)
-  · exact (Disjoint.mono inter_subset_right inter_subset_right) disjoint_compl_right
+lemma test (u v w : α → ℝ≥0∞) (hf : Measurable f) (hs : MeasurableSet s) (hw : Measurable w)
+    (hu : ∀ {z : α → ℝ≥0∞} (_ : Measurable z), ∫⁻ x, (u x) * z x ∂μ = ∫⁻ x, (v x) * z x ∂μ
+      + ∫⁻ x, (u x) * z (f x) ∂μ) (hv : EqOn v 0 sᶜ) {n : ℕ} (n₀ : n ≠ 0) :
+    ∫⁻ x in s, (u x) * w x ∂μ = ∫⁻ x in s, (v x) * w x ∂μ
+      + ∫⁻ x in {y | HitTime f s y ∈ Ioc 0 n} ∩ s, (u x) * w (HitMap f s x) ∂μ
+      + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, (u x) * w (f^[n] x) ∂μ := by
+  have key {m : ℕ} (m₀ : m ≠ 0) :
+    ∫⁻ (x : α) in {y | HitTime f s y = m} ∩ s, u x * w (HitMap f s x) ∂μ
+    = ∫⁻ (x : α) in {y | HitTime f s y = m} ∩ s, u x * w (f^[m] x) ∂μ := by
+    apply MeasureTheory.setLIntegral_congr_fun
+    · apply MeasurableSet.inter _ hs
+      change MeasurableSet ((HitTime f s) ⁻¹' {m})
+      exact hf.hitTime hs (by measurability)
+    · intro x hx
+      simp only [mem_inter_iff, mem_setOf_eq, HitMap] at hx ⊢
+      congr 3
+      exact hx.1
+  have lock (m : ℕ) {t : Set α} (ht : MeasurableSet t) :
+    MeasurableSet ({ y | HitTime f s y = m } ∩ t) := by
+    apply MeasurableSet.inter _ ht
+    change MeasurableSet ((HitTime f s) ⁻¹' {m})
+    exact hf.hitTime hs (by measurability)
+  induction n, (Nat.one_le_iff_ne_zero.2 n₀) using Nat.le_induction with
+  | base =>
+    have : Ioc (0 : ℕ) 1 = {1} := by grind
+    simp only [this, mem_singleton_iff, Function.iterate_one]
+    rw [lintegral_indicator_mul_right hs u w, hu (hw.indicator hs),
+      ← lintegral_indicator_mul_right hs v w, add_assoc]
+    congr 1
+    simp only [← indicator_comp_right, ← lintegral_indicator_mul_right (hf hs) u (w ∘ f),
+      hitTime_one_eq_preimage]
+    have : ∫⁻ (x : α) in f ⁻¹' s ∩ s, u x * w (HitMap f s x) ∂μ
+      = ∫⁻ (x : α) in f ⁻¹' s ∩ s, u x * w (f x) ∂μ := by
+      rw [← hitTime_one_eq_preimage, key one_ne_zero, Function.iterate_one]
+    rw [this, ← lintegral_union]
+    · simp
+    · exact .inter (hf hs) (by measurability)
+    · exact (Disjoint.mono inter_subset_right inter_subset_right) disjoint_compl_right
+  | succ m hm hnm =>
+    rw [hnm (Nat.one_le_iff_ne_zero.1 hm), add_assoc, add_assoc]; clear n₀ hnm
+    congr 1
+    have : {y | HitTime f s y ∈ Ioc 0 (m + 1)} ∩ s
+      = ({y | HitTime f s y ∈ Ioc 0 m} ∩ s) ∪ {y | HitTime f s y = m + 1} ∩ s := by
+      ext x
+      simp only [← Ioc_union_Ioc_eq_Ioc (c := m + 1) (zero_le_one.trans hm) le_self_add, mem_union,
+        mem_inter_iff, mem_setOf_eq, or_and_right]
+      grind
+    rw [this]; clear this
+    rw [lintegral_union (lock (m + 1) hs)]
+    · rw [add_assoc, key (m := m + 1) (by linarith), ← lintegral_union (lock (m + 1) hs.compl)]
+      · congr 1
+        rw [inter_union_compl, lintegral_indicator_mul_right (lock m hs.compl), hu _,
+          ← lintegral_indicator_mul_right (lock m hs.compl)]
+        · simp only [Function.iterate_succ, Function.comp_apply, ← indicator_comp_right]
+          rw [← lintegral_indicator_mul_right]
+          · rw [← hitTime_eq_preimage_inter_compl (by positivity)]
+            simp only [Function.comp_apply, ← Function.iterate_succ_apply, Nat.succ_eq_add_one]
+            suffices h : ∫⁻ (x : α) in {y | HitTime f s y = m} ∩ sᶜ, v x * w (f^[m] x) ∂μ = 0 by
+              rw [h, zero_add]
+            apply setLIntegral_eq_zero (lock m hs.compl)
+            apply Set.EqOn.mono inter_subset_right
+            intro x hx
+            simp only [Pi.zero_apply, _root_.mul_eq_zero]
+            exact Or.inl (hv hx)
+          · apply MeasurableSet.inter _ (hf hs).compl
+            change MeasurableSet (((HitTime f s) ∘ f) ⁻¹' {m})
+            exact (hf.hitTime hs).comp hf (by measurability)
+        · exact (hw.comp (hf.iterate m)).indicator (lock m hs.compl)
+      · exact Set.disjoint_right.2 fun x hx₁ hx₂ ↦ hx₁.2 hx₂.2
+    · refine Set.disjoint_right.2 fun x hx₁ hx₂ ↦ ?_
+      simp only [mem_inter_iff, mem_setOf_eq, mem_Ioc] at hx₁ hx₂
+      grind
+
+/- Works, bu need simplifications and clarification. A version where v doesn't vanish outside
+s would also be nice. -/
+
+lemma test_cor₁ (w : α → ℝ≥0∞) (hf : MeasurePreserving f μ μ) (hs : MeasurableSet s)
+    (hw : Measurable w) {n : ℕ} (n₀ : n ≠ 0) :
+    ∫⁻ x in s, w x ∂μ = ∫⁻ x in {y | HitTime f s y ∈ Ioc 0 n} ∩ s, w (HitMap f s x) ∂μ
+      + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, w (f^[n] x) ∂μ := by
+  have h := test (μ := μ) 1 0 w hf.measurable hs hw
+  simp only [Pi.one_apply, one_mul, Pi.zero_apply, zero_mul, lintegral_const, zero_add,
+    eqOn_refl 0 sᶜ, MeasurableSet.univ, Measure.restrict_apply, univ_inter, forall_const] at h
+  exact h (fun hz ↦ (hf.lintegral_comp hz).symm) n₀
+
+lemma test_cor₂ (hf : MeasurePreserving f μ μ) (hs : MeasurableSet s) {n : ℕ} (n₀ : n ≠ 0) :
+    μ s = μ ({y | HitTime f s y ∈ Ioc 0 n} ∩ s) + μ ({y | HitTime f s y = n} ∩ sᶜ) := by
+  have h := test_cor₁ 1 hf hs measurable_one n₀
+  simp only [Pi.one_apply, lintegral_const, MeasurableSet.univ, Measure.restrict_apply, univ_inter,
+    one_mul] at h
+  exact h
+
 
 end Recurrence

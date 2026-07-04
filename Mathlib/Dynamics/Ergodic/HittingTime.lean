@@ -86,6 +86,13 @@ lemma hitTime_pos_set_eq_iInter_inter {n : ℕ} (h : n ≠ 0) :
   ext x
   simp [hitTime_eq_pos_iff f s x h]
 
+lemma hitTime_one_eq_preimage :
+    {x | HitTime f s x = 1} = f ⁻¹' s := by
+  ext x
+  simp only [mem_setOf_eq, hitTime_eq_pos_iff f s x one_ne_zero, mem_Ioo, Function.iterate_one,
+    mem_preimage, and_iff_right_iff_imp]
+  exact fun _ _ _ _ ↦ by linarith
+
 lemma hitTime_image_eq_zero (h : HitTime f s x = 0) :
     HitTime f s (f x) = 0 := by
   refine hitTime_eq_zero_iff_forall.2 fun n n₀ ↦ ?_
@@ -126,13 +133,6 @@ lemma hitTime_eq_hitTime_image_add_one (h : HitTime f s x ≠ 0) (hx : f x ∉ s
     apply key
     grind
   · exact mem_iterate_of_hitTime (hitTime_image_ne_zero h hx)
-
-lemma hitTime_one_eq_preimage :
-    {x | HitTime f s x = 1} = f ⁻¹' s := by
-  ext x
-  simp only [mem_setOf_eq, hitTime_eq_pos_iff f s x one_ne_zero, mem_Ioo, Function.iterate_one,
-    mem_preimage, and_iff_right_iff_imp]
-  exact fun _ _ _ _ ↦ by linarith
 
 lemma hitTime_eq_preimage_inter_compl {n : ℕ} (n₀ : n ≠ 0) :
     {x | HitTime f s x = n + 1} = f ⁻¹' ({x | HitTime f s x = n} ∩ sᶜ) := by
@@ -268,7 +268,7 @@ lemma test (u v w : α → ℝ≥0∞) (hf : Measurable f) (hs : MeasurableSet s
       + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, (u x) * w (HitMap f s x) ∂μ := by
   induction n, (Nat.one_le_iff_ne_zero.2 n₀) using Nat.le_induction with
   | base =>
-    -- Simplify the final expression.
+    -- Simplify the expression.
     have th₁ (m : ℕ) : m ∈ Ioc (0 : ℕ) 1 ↔ m = 1 := by grind only [= mem_Ioc]
     have th₂ (m : ℕ) : m ∈ Ioo (0 : ℕ) 1 ↔ False := by grind only [= mem_Ioo]
     simp only [th₂, setOf_false, empty_inter, setLIntegral_empty, add_zero, th₁,
@@ -326,6 +326,55 @@ lemma test (u v w : α → ℝ≥0∞) (hf : Measurable f) (hs : MeasurableSet s
     apply setLIntegral_congr_fun (hf.hitTime_inter hs hs.compl m) fun x hx ↦ ?_
     congr 3
     exact hx.1.symm
+
+/-- Simpler version. -/
+lemma test₀ (w : α → ℝ≥0∞) (hf : MeasurePreserving f μ μ) (hs : MeasurableSet s) (hw : Measurable w)
+    {n : ℕ} (n₀ : n ≠ 0) :
+    ∫⁻ x in s, w x ∂μ = ∫⁻ x in {y | HitTime f s y ∈ Ioc 0 n} ∩ s, w (HitMap f s x) ∂μ
+      + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, w (HitMap f s x) ∂μ := by
+  induction n, (Nat.one_le_iff_ne_zero.2 n₀) using Nat.le_induction with
+  | base =>
+    have th₁ (m : ℕ) : m ∈ Ioc (0 : ℕ) 1 ↔ m = 1 := by grind only [= mem_Ioc]
+    simp only [th₁]
+    rw [← lintegral_union (hf.measurable.hitTime_inter hs hs.compl 1) (by grind), inter_union_compl,
+      ← hf.setLIntegral_comp_preimage hs hw, ← hitTime_one_eq_preimage]
+    apply setLIntegral_congr_fun
+    · change MeasurableSet ((HitTime f s) ⁻¹' {1})
+      exact (hf.measurable.hitTime hs) (by measurability)
+    · intro x hx
+      rw [mem_setOf_eq] at hx
+      simp [HitMap, hx]
+  | succ m hm hnm =>
+    -- Implement the induction hypothesis and simplify the first term.
+    rw [hnm (Nat.one_le_iff_ne_zero.1 hm)]; clear n₀ hnm
+    -- Split Ioc 0 (m + 1) as Ioc 0 m ∪ {m + 1}, and simplify the Ioc 0 m term.
+    have : { y | HitTime f s y ∈ Ioc 0 (m + 1) } ∩ s
+      = ({ y | HitTime f s y ∈ Ioc 0 m } ∩ s) ∪ { y | HitTime f s y = m + 1 } ∩ s := by
+      ext x
+      simp only [mem_Ioc, mem_inter_iff, mem_setOf_eq, mem_union]
+      grind only
+    rw [this, lintegral_union (hf.measurable.hitTime_inter hs hs (m + 1)) (by grind), add_assoc]
+    congr 1; clear this
+    -- Merge the two integrals of u * w ∘ HitMap f s over disjoint sets.
+    rw [← lintegral_union (hf.measurable.hitTime_inter hs hs.compl (m + 1)) (by grind),
+      inter_union_compl]
+    have : ∫⁻ (x : α) in { y | HitTime f s y = m } ∩ sᶜ, w (HitMap f s x) ∂μ
+      = ∫⁻ (x : α) in { y | HitTime f s y = m } ∩ sᶜ, w (f^[m] x) ∂μ := by
+      refine setLIntegral_congr_fun (hf.measurable.hitTime_inter hs hs.compl m) fun x hx ↦ ?_
+      rw [HitMap]; congr 2; exact hx.1
+    rw [this]; clear this
+    have : ∫⁻ (x : α) in { y | HitTime f s y = m + 1 }, w (HitMap f s x) ∂μ
+      = ∫⁻ (x : α) in { y | HitTime f s y = m + 1 }, w (f^[m + 1] x) ∂μ := by
+      apply setLIntegral_congr_fun
+      · change MeasurableSet ((HitTime f s) ⁻¹' {m + 1})
+        exact hf.measurable.hitTime hs (by measurability)
+      · intro x hx
+        simp only [HitMap]; congr 2
+    rw [this, ← hf.setLIntegral_comp_preimage (hf.measurable.hitTime_inter hs hs.compl m)]
+    · rw [hitTime_eq_preimage_inter_compl (by positivity)]
+      rfl
+    · exact hw.comp (hf.measurable.iterate m)
+
 
 lemma test' (u v w : α → ℝ≥0∞) (hf : Measurable f) (hs : MeasurableSet s) (hw : Measurable w)
     (hu : ∀ {z : α → ℝ≥0∞} (_ : Measurable z), ∫⁻ x, (u x) * z x ∂μ = ∫⁻ x, (v x) * z x ∂μ

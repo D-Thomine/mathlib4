@@ -7,30 +7,10 @@ module
 
 public import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
 public import Mathlib.MeasureTheory.Integral.Lebesgue.Map
-public import Mathlib.Dynamics.Ergodic.MeasurePreserving
+public import Mathlib.Dynamics.Ergodic.Conservative
 
 /-!
-# Conservative systems
-
-In this file we define `f : α → α` to be a *conservative* system w.r.t. a measure `μ` if `f` is
-non-singular (`MeasureTheory.QuasiMeasurePreserving`) and for every measurable set `s` of
-positive measure at least one point `x ∈ s` returns back to `s` after some number of iterations of
-`f`. There are several properties that look like they are stronger than this one but actually follow
-from it:
-
-* `MeasureTheory.Conservative.frequently_measure_inter_ne_zero`,
-  `MeasureTheory.Conservative.exists_gt_measure_inter_ne_zero`: if `μ s ≠ 0`, then for infinitely
-  many `n`, the measure of `s ∩ f^[n] ⁻¹' s` is positive.
-
-* `MeasureTheory.Conservative.measure_mem_forall_ge_image_notMem_eq_zero`,
-  `MeasureTheory.Conservative.ae_mem_imp_frequently_image_mem`: a.e. every point of `s` visits `s`
-  infinitely many times (Poincaré recurrence theorem).
-
-We also prove the topological Poincaré recurrence theorem
-`MeasureTheory.Conservative.ae_frequently_mem_of_mem_nhds`. Let `f : α → α` be a conservative
-dynamical system on a topological space with second countable topology and measurable open
-sets. Then almost every point `x : α` is recurrent: it visits every neighborhood `s ∈ 𝓝 x`
-infinitely many times.
+#
 
 ## Implementation notes
 The hitting time of a set `s` for a point `x` under a transformation `f` is defined as the `sInf`
@@ -258,93 +238,117 @@ lemma _root_.Measurable.QuasiMeasurePreserving.hitMap (hf : QuasiMeasurePreservi
 
 open scoped ENNReal
 
-/-- Put this lemma somewhere else. -/
-lemma lintegral_indicator_mul_right {t : Set α} (ht : MeasurableSet t) (f g : α → ℝ≥0∞) :
+private lemma lintegral_indicator_mul_right {t : Set α} (ht : MeasurableSet t) (f g : α → ℝ≥0∞) :
     ∫⁻ x in t, (f x) * g x ∂μ = ∫⁻ x, (f x) * t.indicator g x ∂μ := by
   rw [← lintegral_indicator ht]; congr 1; ext x
   exact indicator_mul_right t f g
 
+private lemma _root_.Measurable.hitTime_inter {t : Set α} (hf : Measurable f) (hs : MeasurableSet s)
+    (ht : MeasurableSet t) (m : ℕ) :
+    MeasurableSet ({ y | HitTime f s y = m } ∩ t) := by
+  apply MeasurableSet.inter _ ht
+  change MeasurableSet ((HitTime f s) ⁻¹' {m})
+  exact hf.hitTime hs (by measurability)
+
+private lemma _root_.Measurable.lintegral_hitMap_eq_iterate {t : Set α} {u v : α → ℝ≥0∞}
+    (hf : Measurable f) (hs : MeasurableSet s) (ht : MeasurableSet t) (m : ℕ) :
+    ∫⁻ (x : α) in {y | HitTime f s y = m} ∩ t, u x * v (HitMap f s x) ∂μ
+    = ∫⁻ (x : α) in {y | HitTime f s y = m} ∩ t, u x * v (f^[m] x) ∂μ := by
+  refine setLIntegral_congr_fun (hf.hitTime_inter hs ht m) fun x hx ↦ ?_
+  rw [HitMap, hx.1]
+
+/-- Works well, but the only reasonnable function on which to use it is u = 1 and v = 0.
+Overkill? -/
 lemma test (u v w : α → ℝ≥0∞) (hf : Measurable f) (hs : MeasurableSet s) (hw : Measurable w)
+    (hu : ∀ {z : α → ℝ≥0∞} (_ : Measurable z), ∫⁻ x, (u x) * z x ∂μ = ∫⁻ x, (v x) * z x ∂μ
+      + ∫⁻ x, (u x) * z (f x) ∂μ) {n : ℕ} (n₀ : n ≠ 0) :
+    ∫⁻ x in s, (u x) * w x ∂μ = ∫⁻ x in s, (v x) * w x ∂μ
+      + ∫⁻ x in {y | HitTime f s y ∈ Ioc 0 n} ∩ s, (u x) * w (HitMap f s x) ∂μ
+      + ∫⁻ x in {y | HitTime f s y ∈ Ioo 0 n} ∩ sᶜ, (v x) * w (HitMap f s x) ∂μ
+      + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, (u x) * w (HitMap f s x) ∂μ := by
+  induction n, (Nat.one_le_iff_ne_zero.2 n₀) using Nat.le_induction with
+  | base =>
+    -- Simplify the final expression.
+    have th₁ (m : ℕ) : m ∈ Ioc (0 : ℕ) 1 ↔ m = 1 := by grind only [= mem_Ioc]
+    have th₂ (m : ℕ) : m ∈ Ioo (0 : ℕ) 1 ↔ False := by grind only [= mem_Ioo]
+    simp only [th₂, setOf_false, empty_inter, setLIntegral_empty, add_zero, th₁,
+      hf.lintegral_hitMap_eq_iterate hs hs.compl 1]
+    rw [lintegral_indicator_mul_right hs u w, hu (hw.indicator hs),
+      ← lintegral_indicator_mul_right hs v w, add_assoc]; clear hu th₁ th₂ n₀ n
+    congr 1
+    -- Use hu.
+    simp only [← indicator_comp_right]
+    rw [← lintegral_indicator_mul_right (hf hs) u (w ∘ f), ← hitTime_one_eq_preimage,
+      hf.lintegral_hitMap_eq_iterate hs hs 1]
+    simp only [Function.comp_apply, Function.iterate_one]
+    rw [← lintegral_union (hf.hitTime_inter hs hs.compl 1)]
+    · rw [inter_union_compl]
+    · exact (Disjoint.mono inter_subset_right inter_subset_right) disjoint_compl_right
+  | succ m hm hnm =>
+    -- Implement the induction hypothesis and simplify the first term.
+    rw [hnm (Nat.one_le_iff_ne_zero.1 hm), add_assoc, add_assoc, add_assoc, add_assoc]; clear n₀ hnm
+    congr 1
+    -- Split Ioc 0 (m + 1) as Ioc 0 m ∪ {m + 1}, and simplify the Ioc 0 m term.
+    have : { y | HitTime f s y ∈ Ioc 0 (m + 1) } ∩ s
+      = ({ y | HitTime f s y ∈ Ioc 0 m } ∩ s) ∪ { y | HitTime f s y = m + 1 } ∩ s := by
+      ext x
+      simp only [mem_Ioc, mem_inter_iff, mem_setOf_eq, mem_union]
+      grind only
+    rw [this, lintegral_union (hf.hitTime_inter hs hs (m + 1)) (by grind), add_assoc]; clear this
+    congr 1
+    -- Split Ioo 0 (m + 1) as Ioo 0 m ∪ {m}, and simplify the Ioo 0 m term.
+    have : { y | HitTime f s y ∈ Ioo 0 (m + 1) } ∩ sᶜ
+      = ({ y | HitTime f s y ∈ Ioo 0 m } ∩ sᶜ) ∪ { y | HitTime f s y = m } ∩ sᶜ := by
+      ext x
+      simp only [mem_Ioo, Order.lt_add_one_iff, mem_inter_iff, mem_setOf_eq, mem_compl_iff,
+        mem_union]
+      grind only
+    rw [this, lintegral_union (hf.hitTime_inter hs hs.compl m) (by grind)]; clear this
+    nth_rw 2 [add_comm]; rw [add_assoc, add_assoc]
+    congr 1
+    -- Merge the two integrals of u * w ∘ HitMap f s over disjoint sets.
+    rw [← lintegral_union (hf.hitTime_inter hs hs (m + 1)) (by grind), union_comm,
+      inter_union_compl, hf.lintegral_hitMap_eq_iterate hs hs.compl m,
+      ← inter_univ { y | HitTime f s y = m + 1 }, hf.lintegral_hitMap_eq_iterate hs .univ (m + 1),
+      inter_univ]
+    -- We can at last use hu.
+    rw [lintegral_indicator_mul_right (hf.hitTime_inter hs hs.compl m), hu _,
+      ← lintegral_indicator_mul_right (hf.hitTime_inter hs hs.compl m)]; swap
+    · exact (hw.comp (hf.iterate m)).indicator (hf.hitTime_inter hs hs.compl m)
+    simp only [Function.iterate_succ, Function.comp_apply, ← indicator_comp_right]
+    rw [← lintegral_indicator_mul_right]; swap
+    · apply MeasurableSet.inter _ (hf hs).compl
+      change MeasurableSet (((HitTime f s) ∘ f) ⁻¹' {m})
+      exact (hf.hitTime hs).comp hf (by measurability)
+    rw [← hitTime_eq_preimage_inter_compl (by positivity)]
+    simp only [Function.comp_apply, ← Function.iterate_succ_apply, Nat.succ_eq_add_one]
+    congr 1
+    apply setLIntegral_congr_fun (hf.hitTime_inter hs hs.compl m) fun x hx ↦ ?_
+    congr 3
+    exact hx.1.symm
+
+lemma test' (u v w : α → ℝ≥0∞) (hf : Measurable f) (hs : MeasurableSet s) (hw : Measurable w)
     (hu : ∀ {z : α → ℝ≥0∞} (_ : Measurable z), ∫⁻ x, (u x) * z x ∂μ = ∫⁻ x, (v x) * z x ∂μ
       + ∫⁻ x, (u x) * z (f x) ∂μ) (hv : EqOn v 0 sᶜ) {n : ℕ} (n₀ : n ≠ 0) :
     ∫⁻ x in s, (u x) * w x ∂μ = ∫⁻ x in s, (v x) * w x ∂μ
       + ∫⁻ x in {y | HitTime f s y ∈ Ioc 0 n} ∩ s, (u x) * w (HitMap f s x) ∂μ
-      + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, (u x) * w (f^[n] x) ∂μ := by
-  have key {m : ℕ} (m₀ : m ≠ 0) :
-    ∫⁻ (x : α) in {y | HitTime f s y = m} ∩ s, u x * w (HitMap f s x) ∂μ
-    = ∫⁻ (x : α) in {y | HitTime f s y = m} ∩ s, u x * w (f^[m] x) ∂μ := by
-    apply MeasureTheory.setLIntegral_congr_fun
-    · apply MeasurableSet.inter _ hs
-      change MeasurableSet ((HitTime f s) ⁻¹' {m})
-      exact hf.hitTime hs (by measurability)
-    · intro x hx
-      simp only [mem_inter_iff, mem_setOf_eq, HitMap] at hx ⊢
-      congr 3
-      exact hx.1
-  have lock (m : ℕ) {t : Set α} (ht : MeasurableSet t) :
-    MeasurableSet ({ y | HitTime f s y = m } ∩ t) := by
-    apply MeasurableSet.inter _ ht
-    change MeasurableSet ((HitTime f s) ⁻¹' {m})
+      + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, (u x) * w (HitMap f s x) ∂μ := by
+  rw [test u v w hf hs hw hu n₀]
+  suffices h : ∫⁻ x in {y | HitTime f s y ∈ Ioo 0 n} ∩ sᶜ, (v x) * w (HitMap f s x) ∂μ = 0 by
+    rw [h, add_zero]
+  apply setLIntegral_eq_zero
+  · apply MeasurableSet.inter _ hs.compl
+    change MeasurableSet ((HitTime f s) ⁻¹' (Ioo 0 n))
     exact hf.hitTime hs (by measurability)
-  induction n, (Nat.one_le_iff_ne_zero.2 n₀) using Nat.le_induction with
-  | base =>
-    have : Ioc (0 : ℕ) 1 = {1} := by grind
-    simp only [this, mem_singleton_iff, Function.iterate_one]
-    rw [lintegral_indicator_mul_right hs u w, hu (hw.indicator hs),
-      ← lintegral_indicator_mul_right hs v w, add_assoc]
-    congr 1
-    simp only [← indicator_comp_right, ← lintegral_indicator_mul_right (hf hs) u (w ∘ f),
-      hitTime_one_eq_preimage]
-    have : ∫⁻ (x : α) in f ⁻¹' s ∩ s, u x * w (HitMap f s x) ∂μ
-      = ∫⁻ (x : α) in f ⁻¹' s ∩ s, u x * w (f x) ∂μ := by
-      rw [← hitTime_one_eq_preimage, key one_ne_zero, Function.iterate_one]
-    rw [this, ← lintegral_union]
-    · simp
-    · exact .inter (hf hs) (by measurability)
-    · exact (Disjoint.mono inter_subset_right inter_subset_right) disjoint_compl_right
-  | succ m hm hnm =>
-    rw [hnm (Nat.one_le_iff_ne_zero.1 hm), add_assoc, add_assoc]; clear n₀ hnm
-    congr 1
-    have : {y | HitTime f s y ∈ Ioc 0 (m + 1)} ∩ s
-      = ({y | HitTime f s y ∈ Ioc 0 m} ∩ s) ∪ {y | HitTime f s y = m + 1} ∩ s := by
-      ext x
-      simp only [← Ioc_union_Ioc_eq_Ioc (c := m + 1) (zero_le_one.trans hm) le_self_add, mem_union,
-        mem_inter_iff, mem_setOf_eq, or_and_right]
-      grind
-    rw [this]; clear this
-    rw [lintegral_union (lock (m + 1) hs)]
-    · rw [add_assoc, key (m := m + 1) (by linarith), ← lintegral_union (lock (m + 1) hs.compl)]
-      · congr 1
-        rw [inter_union_compl, lintegral_indicator_mul_right (lock m hs.compl), hu _,
-          ← lintegral_indicator_mul_right (lock m hs.compl)]
-        · simp only [Function.iterate_succ, Function.comp_apply, ← indicator_comp_right]
-          rw [← lintegral_indicator_mul_right]
-          · rw [← hitTime_eq_preimage_inter_compl (by positivity)]
-            simp only [Function.comp_apply, ← Function.iterate_succ_apply, Nat.succ_eq_add_one]
-            suffices h : ∫⁻ (x : α) in {y | HitTime f s y = m} ∩ sᶜ, v x * w (f^[m] x) ∂μ = 0 by
-              rw [h, zero_add]
-            apply setLIntegral_eq_zero (lock m hs.compl)
-            apply Set.EqOn.mono inter_subset_right
-            intro x hx
-            simp only [Pi.zero_apply, _root_.mul_eq_zero]
-            exact Or.inl (hv hx)
-          · apply MeasurableSet.inter _ (hf hs).compl
-            change MeasurableSet (((HitTime f s) ∘ f) ⁻¹' {m})
-            exact (hf.hitTime hs).comp hf (by measurability)
-        · exact (hw.comp (hf.iterate m)).indicator (lock m hs.compl)
-      · exact Set.disjoint_right.2 fun x hx₁ hx₂ ↦ hx₁.2 hx₂.2
-    · refine Set.disjoint_right.2 fun x hx₁ hx₂ ↦ ?_
-      simp only [mem_inter_iff, mem_setOf_eq, mem_Ioc] at hx₁ hx₂
-      grind
-
-/- Works, bu need simplifications and clarification. A version where v doesn't vanish outside
-s would also be nice. -/
+  · intro x hx
+    simp only [Pi.zero_apply, _root_.mul_eq_zero]
+    exact Or.inl (hv hx.2)
 
 lemma test_cor₁ (w : α → ℝ≥0∞) (hf : MeasurePreserving f μ μ) (hs : MeasurableSet s)
     (hw : Measurable w) {n : ℕ} (n₀ : n ≠ 0) :
     ∫⁻ x in s, w x ∂μ = ∫⁻ x in {y | HitTime f s y ∈ Ioc 0 n} ∩ s, w (HitMap f s x) ∂μ
-      + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, w (f^[n] x) ∂μ := by
-  have h := test (μ := μ) 1 0 w hf.measurable hs hw
+      + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, w (HitMap f s x) ∂μ := by
+  have h := test' (μ := μ) 1 0 w hf.measurable hs hw
   simp only [Pi.one_apply, one_mul, Pi.zero_apply, zero_mul, lintegral_const, zero_add,
     eqOn_refl 0 sᶜ, MeasurableSet.univ, Measure.restrict_apply, univ_inter, forall_const] at h
   exact h (fun hz ↦ (hf.lintegral_comp hz).symm) n₀
@@ -355,6 +359,27 @@ lemma test_cor₂ (hf : MeasurePreserving f μ μ) (hs : MeasurableSet s) {n : �
   simp only [Pi.one_apply, lintegral_const, MeasurableSet.univ, Measure.restrict_apply, univ_inter,
     one_mul] at h
   exact h
+
+def ExcursionSum (f : α → α) (s : Set α) (g : α → ℝ≥0∞) :=
+  fun x ↦ ∑ n ∈ Finset.Ico 0 (HitTime f s x), g (f^[n] x)
+
+omit [MeasureSpace α] in
+lemma excursionSum₁ (g : α → ℝ≥0∞) {x : α} (h : HitTime f s x ≠ 0) (hx : f x ∉ s) :
+    ExcursionSum f s g x = ExcursionSum f s g (f x) + g x := by
+  rw [ExcursionSum, ExcursionSum, hitTime_eq_hitTime_image_add_one h hx,
+    ← Finset.Ico_union_Ico_eq_Ico (b := 1) zero_le (by linarith), Finset.sum_union]; swap
+  · refine Finset.disjoint_left.2 fun x hx₁ hx₂ ↦ ?_
+    simp only [Ico_succ_singleton, Finset.mem_singleton, Finset.mem_Ico] at hx₁ hx₂
+    rw [hx₁] at hx₂
+    aesop
+  rw [← Finset.sum_Ico_add _ 0 (HitTime f s (f x)) 1, add_comm]
+  congr 2
+  · ext n
+    rw [add_comm, Function.iterate_succ, Function.comp_apply]
+  · simp
+
+
+
 
 
 end Recurrence

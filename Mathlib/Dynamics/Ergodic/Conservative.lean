@@ -116,6 +116,9 @@ def IsRecurrent (f : α → α) (μ : Measure α) (s : Set α) :=
     s ≤ᵐ[μ] ⋃ n ≠ 0, f^[n] ⁻¹' s
 
 lemma isRecurrent_def :
+    IsRecurrent f μ s ↔ s ≤ᵐ[μ] ⋃ n ≠ 0, f^[n] ⁻¹' s := Iff.rfl
+
+lemma isRecurrent_iff_eventually_mem :
     IsRecurrent f μ s ↔ ∀ᵐ (x : α) ∂μ, x ∈ s → ∃ n ≠ 0, f^[n] x ∈ s := by
   change (∀ᵐ x ∂μ, x ∈ s → x ∈ ⋃ n ≠ 0, f^[n] ⁻¹' s) ↔ ∀ᵐ (x : α) ∂μ, x ∈ s → ∃ n ≠ 0, f^[n] x ∈ s
   apply eventually_congr <| Eventually.of_forall fun x ↦ imp_congr_right fun hx ↦ ?_
@@ -123,14 +126,14 @@ lemma isRecurrent_def :
 
 lemma isRecurrent_iff_ae_iUnion :
     IsRecurrent f μ s ↔ (sᶜ ∪ ⋃ n ≠ 0, f^[n] ⁻¹' s : Set α) =ᵐ[μ] univ := by
-  rw [isRecurrent_def, ae_iff, ae_eq_univ]
+  rw [isRecurrent_iff_eventually_mem, ae_iff, ae_eq_univ]
   apply Eq.congr _ (Eq.refl 0)
   congr 2
   simp
 
 lemma isRecurrent_iff_restrict (f : α → α) (hs : NullMeasurableSet s μ) :
     IsRecurrent f μ s ↔ ∀ᵐ (x : α) ∂μ.restrict s, ∃ n ≠ 0, f^[n] x ∈ s := by
-  rw [isRecurrent_def, ae_restrict_iff'₀ hs]
+  rw [isRecurrent_iff_eventually_mem, ae_restrict_iff'₀ hs]
 
 lemma IsRecurrent.congr_ae {ν : Measure α} (hs : IsRecurrent f μ s) (h : ae μ = ae ν) :
     IsRecurrent f ν s := by
@@ -144,7 +147,7 @@ lemma isRecurrent_of_null (hs : μ s = 0) : IsRecurrent f μ s :=
   (measure_eq_zero_iff_ae_notMem.1 hs).mono fun x _ _ ↦ by contradiction
 
 lemma isRecurrent_of_mapsTo (hs : MapsTo f s s) : IsRecurrent f μ s :=
-  isRecurrent_def.2 (Eventually.of_forall fun _ x_s ↦ ⟨1, one_ne_zero, hs x_s⟩)
+  isRecurrent_iff_eventually_mem.2 (Eventually.of_forall fun _ x_s ↦ ⟨1, one_ne_zero, hs x_s⟩)
 
 lemma isRecurrent_univ : IsRecurrent f μ univ :=
   isRecurrent_of_mapsTo (mapsTo_univ f univ)
@@ -152,7 +155,7 @@ lemma isRecurrent_univ : IsRecurrent f μ univ :=
 lemma isRecurrent_iUnion {ι : Type*} [Countable ι] {s : ι → Set α}
     (hs : ∀ i, IsRecurrent f μ (s i)) :
     IsRecurrent f μ (⋃ i, s i) := by
-  simp only [isRecurrent_def] at hs ⊢
+  simp only [isRecurrent_iff_eventually_mem] at hs ⊢
   apply (eventually_countable_forall.2 hs).mono
   intro x x_rec x_s
   obtain ⟨i, x_i⟩ := mem_iUnion.1 x_s
@@ -162,7 +165,7 @@ lemma isRecurrent_iUnion {ι : Type*} [Countable ι] {s : ι → Set α}
 lemma IsRecurrent.exists_mem_iterate_mem (hs : μ s ≠ 0) (hf : IsRecurrent f μ s) :
     ∃ x ∈ s, ∃ m ≠ 0, f^[m] x ∈ s := by
   rw [← frequently_ae_mem_iff] at hs
-  obtain ⟨x, x_s, hx⟩ := (hs.and_eventually (isRecurrent_def.1 hf)).exists
+  obtain ⟨x, x_s, hx⟩ := (hs.and_eventually (isRecurrent_iff_eventually_mem.1 hf)).exists
   exact ⟨x, x_s, hx x_s⟩
 
 lemma isRecurrent_congr_set {t : Set α} (hf : QuasiMeasurePreserving f μ μ) (h : s =ᵐ[μ] t) :
@@ -189,7 +192,7 @@ lemma isRecurrent_iff_isReccurent_iUnion_preimage (s : Set α) (hf : QuasiMeasur
     IsRecurrent f μ s ↔ IsRecurrent f μ (⋃ n, f^[n] ⁻¹' s) := by
   constructor <;> intro hs
   · exact isRecurrent_iUnion fun n ↦ hs.preimage n hf
-  rw [isRecurrent_def] at hs ⊢
+  rw [isRecurrent_iff_eventually_mem] at hs ⊢
   refine hs.mono fun x hx x_s ↦ ?_
   simp only [mem_iUnion, Set.mem_preimage, forall_exists_index] at hx
   specialize hx 0
@@ -263,7 +266,7 @@ lemma isRecurrent_iff_ae_sub_limsup_preimage (s : Set α) (hf : QuasiMeasurePres
 lemma MeasurePreserving.isRecurrent [IsFiniteMeasure μ] (hf : MeasurePreserving f μ μ)
     (hs : NullMeasurableSet s μ) :
     IsRecurrent f μ s :=
-  isRecurrent_def.2 (hf.ae_mem_exists_iterate_mem hs)
+  isRecurrent_iff_eventually_mem.2 (hf.ae_mem_exists_iterate_mem hs)
 
 lemma isRecurrent_id :
     IsRecurrent id μ s :=

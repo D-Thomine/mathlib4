@@ -1,0 +1,105 @@
+/-- About Dynamics.HittingTime -/
+
+/-- Auxiliary lemma -/
+private lemma lintegral_indicator_mul_right {t : Set α} (ht : MeasurableSet t) (f g : α → ℝ≥0∞) :
+    ∫⁻ x in t, (f x) * g x ∂μ = ∫⁻ x, (f x) * t.indicator g x ∂μ := by
+  rw [← lintegral_indicator ht]; congr 1; ext x
+  exact indicator_mul_right t f g
+
+/-- Aucilliary lemma -/
+private lemma _root_.Measurable.lintegral_hitMap_eq_iterate {t : Set α} {u v : α → ℝ≥0∞}
+    (hf : Measurable f) (hs : MeasurableSet s) (ht : MeasurableSet t) (m : ℕ) :
+    ∫⁻ (x : α) in HitTime f s ⁻¹' {m} ∩ t, u x * v (HitMap f s x) ∂μ
+      = ∫⁻ (x : α) in HitTime f s ⁻¹' {m} ∩ t, u x * v (f^[m] x) ∂μ := by
+  refine setLIntegral_congr_fun (by measurability) fun x hx ↦ ?_
+  rw [HitMap, hx.1]
+
+/-- A general lemma for HittingTime. Works well, but the only reasonable functions on which to use
+it is u = 1 and v = 0. A similar lemma would be useful for real/complex-valued  integrable
+functions. As it stands, this is overkill. -/
+lemma test (u v w : α → ℝ≥0∞) (hf : Measurable f) (hs : MeasurableSet s) (hw : Measurable w)
+    (hu : ∀ {z : α → ℝ≥0∞} (_ : Measurable z), ∫⁻ x, (u x) * z x ∂μ = ∫⁻ x, (v x) * z x ∂μ
+      + ∫⁻ x, (u x) * z (f x) ∂μ) {n : ℕ} (n₀ : n ≠ 0) :
+    ∫⁻ x in s, (u x) * w x ∂μ = ∫⁻ x in s, (v x) * w x ∂μ
+      + ∫⁻ x in {y | HitTime f s y ∈ Ioc 0 n} ∩ s, (u x) * w (HitMap f s x) ∂μ
+      + ∫⁻ x in {y | HitTime f s y ∈ Ioo 0 n} ∩ sᶜ, (v x) * w (HitMap f s x) ∂μ
+      + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, (u x) * w (HitMap f s x) ∂μ := by
+  induction n, (Nat.one_le_iff_ne_zero.2 n₀) using Nat.le_induction with
+  | base =>
+    -- Simplify the expression.
+    have th₁ (m : ℕ) : m ∈ Ioc (0 : ℕ) 1 ↔ m = 1 := by grind only [= mem_Ioc]
+    have th₂ (m : ℕ) : m ∈ Ioo (0 : ℕ) 1 ↔ False := by grind only [= mem_Ioo]
+    simp only [th₂, setOf_false, empty_inter, setLIntegral_empty, add_zero, th₁,
+      hf.lintegral_hitMap_eq_iterate hs hs.compl 1]
+    rw [lintegral_indicator_mul_right hs u w, hu (hw.indicator hs),
+      ← lintegral_indicator_mul_right hs v w, add_assoc]; clear hu th₁ th₂ n₀ n
+    congr 1
+    -- Use hu.
+    simp only [← indicator_comp_right]
+    rw [← lintegral_indicator_mul_right (hf hs) u (w ∘ f), ← hitTime_one_eq_preimage,
+      hf.lintegral_hitMap_eq_iterate hs hs 1]
+    simp only [Function.comp_apply, Function.iterate_one]
+    rw [← lintegral_union (hf.hitTime_inter hs hs.compl 1)]
+    · rw [inter_union_compl]
+    · exact (Disjoint.mono inter_subset_right inter_subset_right) disjoint_compl_right
+  | succ m hm hnm =>
+    -- Implement the induction hypothesis and simplify the first term.
+    rw [hnm (Nat.one_le_iff_ne_zero.1 hm), add_assoc, add_assoc, add_assoc, add_assoc]; clear n₀ hnm
+    congr 1
+    -- Split Ioc 0 (m + 1) as Ioc 0 m ∪ {m + 1}, and simplify the Ioc 0 m term.
+    have : { y | HitTime f s y ∈ Ioc 0 (m + 1) } ∩ s
+      = ({ y | HitTime f s y ∈ Ioc 0 m } ∩ s) ∪ { y | HitTime f s y = m + 1 } ∩ s := by
+      ext x
+      simp only [mem_Ioc, mem_inter_iff, mem_setOf_eq, mem_union]
+      grind only
+    rw [this, lintegral_union (hf.hitTime_inter hs hs (m + 1)) (by grind), add_assoc]; clear this
+    congr 1
+    -- Split Ioo 0 (m + 1) as Ioo 0 m ∪ {m}, and simplify the Ioo 0 m term.
+    have : { y | HitTime f s y ∈ Ioo 0 (m + 1) } ∩ sᶜ
+      = ({ y | HitTime f s y ∈ Ioo 0 m } ∩ sᶜ) ∪ { y | HitTime f s y = m } ∩ sᶜ := by
+      ext x
+      simp only [mem_Ioo, Order.lt_add_one_iff, mem_inter_iff, mem_setOf_eq, mem_compl_iff,
+        mem_union]
+      grind only
+    rw [this, lintegral_union (hf.hitTime_inter hs hs.compl m) (by grind)]; clear this
+    nth_rw 2 [add_comm]; rw [add_assoc, add_assoc]
+    congr 1
+    -- Merge the two integrals of u * w ∘ HitMap f s over disjoint sets.
+    rw [← lintegral_union (hf.hitTime_inter hs hs (m + 1)) (by grind), union_comm,
+      inter_union_compl, hf.lintegral_hitMap_eq_iterate hs hs.compl m,
+      ← inter_univ { y | HitTime f s y = m + 1 }, hf.lintegral_hitMap_eq_iterate hs .univ (m + 1),
+      inter_univ]
+    -- We can at last use hu.
+    rw [lintegral_indicator_mul_right (hf.hitTime_inter hs hs.compl m), hu _,
+      ← lintegral_indicator_mul_right (hf.hitTime_inter hs hs.compl m)]; swap
+    · exact (hw.comp (hf.iterate m)).indicator (hf.hitTime_inter hs hs.compl m)
+    simp only [Function.iterate_succ, Function.comp_apply, ← indicator_comp_right]
+    rw [← lintegral_indicator_mul_right]; swap
+    · apply MeasurableSet.inter _ (hf hs).compl
+      change MeasurableSet (((HitTime f s) ∘ f) ⁻¹' {m})
+      exact (hf.hitTime hs).comp hf (by measurability)
+    rw [← hitTime_eq_preimage_inter_compl (by positivity)]
+    simp only [Function.comp_apply, ← Function.iterate_succ_apply, Nat.succ_eq_add_one]
+    congr 1
+    apply setLIntegral_congr_fun (hf.hitTime_inter hs hs.compl m) fun x hx ↦ ?_
+    congr 3
+    exact hx.1.symm
+
+/-- Corollary -/
+
+lemma test' (u v w : α → ℝ≥0∞) (hf : Measurable f) (hs : MeasurableSet s) (hw : Measurable w)
+    (hu : ∀ {z : α → ℝ≥0∞} (_ : Measurable z), ∫⁻ x, (u x) * z x ∂μ = ∫⁻ x, (v x) * z x ∂μ
+      + ∫⁻ x, (u x) * z (f x) ∂μ) (hv : EqOn v 0 sᶜ) {n : ℕ} (n₀ : n ≠ 0) :
+    ∫⁻ x in s, (u x) * w x ∂μ = ∫⁻ x in s, (v x) * w x ∂μ
+      + ∫⁻ x in {y | HitTime f s y ∈ Ioc 0 n} ∩ s, (u x) * w (HitMap f s x) ∂μ
+      + ∫⁻ x in {y | HitTime f s y = n} ∩ sᶜ, (u x) * w (HitMap f s x) ∂μ := by
+  rw [test u v w hf hs hw hu n₀]
+  suffices h : ∫⁻ x in {y | HitTime f s y ∈ Ioo 0 n} ∩ sᶜ, (v x) * w (HitMap f s x) ∂μ = 0 by
+    rw [h, add_zero]
+  apply setLIntegral_eq_zero
+  · apply MeasurableSet.inter _ hs.compl
+    change MeasurableSet ((HitTime f s) ⁻¹' (Ioo 0 n))
+    exact hf.hitTime hs (by measurability)
+  · intro x hx
+    simp only [Pi.zero_apply, _root_.mul_eq_zero]
+    exact Or.inl (hv hx.2)

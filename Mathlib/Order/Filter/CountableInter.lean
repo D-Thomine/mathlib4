@@ -145,19 +145,19 @@ theorem EventuallyEq.countable_bInter {ι : Type*} {S : Set ι} (hS : S.Countabl
   EventuallyEq.countable_bInter
 
 theorem EventuallyEq.iff_eventuallyEq_preimage [Countable β] {f g : α → β} :
-    f =ᶠ[l] g ↔ ∀ y, { x | f x = y } =ᶠ[l] { x | g x = y } := by
+    f =ᶠ[l] g ↔ ∀ y, f ⁻¹' {y} =ᶠ[l] g ⁻¹' {y} := by
   refine ⟨fun h x ↦ eventuallyEq_set.2 ?_, fun h ↦ eventuallyEq_iff_exists_mem.2 ?_⟩
   · filter_upwards [h] with y hy
-    rw [hy]
-  · refine ⟨⋂ x, univ \ symmDiff { y | f y = x } { y | g y = x }, ?_, ?_⟩
+    simp [hy]
+  · refine ⟨⋂ x, univ \ symmDiff (f ⁻¹' {x}) (g ⁻¹' {x}), ?_, ?_⟩
     · refine countable_iInter_mem.2 fun x ↦ ?_
       filter_upwards [eventuallyEq_set.1 (h x)] with y hy
-      simp only [Set.mem_sdiff, mem_univ, mem_symmDiff, mem_setOf_eq, not_or, not_and, not_not,
-        true_and] at hy ⊢
+      simp only [mem_preimage, mem_singleton_iff, Set.mem_sdiff, mem_univ, mem_symmDiff, not_or,
+        not_and, not_not, true_and] at hy ⊢
       exact ⟨hy.1, hy.2⟩
     · intro y hy
       simp only [symmDiff, sup_eq_union, mem_iInter, Set.mem_sdiff, mem_univ, mem_union,
-        mem_setOf_eq, not_or, not_and, not_not, true_and] at hy ⊢
+        mem_preimage, mem_singleton_iff, not_or, not_and, not_not, true_and] at hy ⊢
       exact (hy (g y)).2 (by rfl)
 
 /-- Construct a filter with countable intersection property. This constructor deduces

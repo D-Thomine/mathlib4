@@ -45,27 +45,6 @@ public section
 
 noncomputable section
 
-lemma _root_.ENNReal.sub_le_sub_right {a b : ENNReal} (h : a ≤ b) (c : ENNReal) :
-    a - c ≤ b - c := by
-  gcongr
-
-lemma _root_.ENNReal.sub_le_sub_left {a b : ENNReal} (h : a ≤ b) (c : ENNReal) :
-    c - b ≤ c - a := by
-  gcongr
-
-lemma _root_.ENNReal.sub_eq_zero {a b : ENNReal} (h : a ≤ b) :
-    a - b = 0 := by
-  exact tsub_eq_zero_of_le h
-
-lemma _root_.ENNReal.sub_eq_zero_iff {a b : ENNReal} : a - b = 0 ↔ a ≤ b := by
-  exact tsub_eq_zero_iff_le
-
-lemma _root_.ENNReal.sub_ne_zero_iff {a b : ENNReal} : a - b ≠ 0 ↔ b < a :=
-  not_iff_not.1 (by simp [ENNReal.sub_eq_zero_iff])
-
-lemma _root.ENNReal.sub_add_cancel {a b : ENNReal} (h : b ≤ a) : a - b + b = a := by
-  exact tsub_add_cancel_of_le h
-
 namespace MeasureTheory
 
 open ENNReal Filter Function Measure Set
@@ -114,42 +93,7 @@ lemma _root_.Finite.equiLIntegrable [Finite ι] (h : ∀ i, AEMeasurable (F i) �
     EquiLIntegrable μ F := by
   sorry
 
-private lemma setLIntegral_le_of_measure_le' {f : α → ℝ≥0∞} {A : Set α} {a : ℝ≥0∞}
-    (hf : Measurable f) (hA : MeasurableSet A) (hA' : μ A ≠ ∞) (h : μ A ≤ μ (f ⁻¹' Ici a)) :
-    ∫⁻ x in A, f x ∂μ ≤ ∫⁻ x in f ⁻¹' Ici a, f x ∂μ := by
-  rw [← lintegral_inter_add_sdiff f A (hf (measurableSet_Ici (a := a))),
-    ← lintegral_inter_add_sdiff f (f ⁻¹' Ici a) hA, inter_comm]
-  apply add_le_add_right
-  apply le_trans (b := a * μ (A \ f ⁻¹' Ici a))
-  · rw [← setLIntegral_const]
-    refine setLIntegral_mono' (by measurability) fun x hx ↦ ?_
-    simp only [Set.mem_sdiff, mem_preimage, mem_Ici, not_le] at hx
-    exact hx.2.le
-  apply le_trans' (b := a * μ (f ⁻¹' Ici a \ A))
-  · rw [← setLIntegral_const]
-    refine setLIntegral_mono' (by measurability) fun x hx ↦ ?_
-    simp only [Set.mem_sdiff, mem_preimage, mem_Ici] at hx
-    exact hx.1
-  apply mul_le_mul_right
-  nth_rw 1 [← sdiff_inter_self_eq_sdiff, inter_comm]; nth_rw 2 [← sdiff_inter_self_eq_sdiff]
-  apply le_measure_sdiff.trans'
-  rw [measure_sdiff inter_subset_left (by measurability)
-    (measure_lt_top_mono inter_subset_left hA'.lt_top).ne]
-  exact ENNReal.sub_le_sub_right h _
-
-lemma setLIntegral_le_of_measure_le {f : α → ℝ≥0∞} (A : Set α) {a : ℝ≥0∞} (hf : AEMeasurable f μ)
-    (hA : NullMeasurableSet A μ) (hA' : μ A ≠ ∞) (h : μ A ≤ μ (f ⁻¹' Ici a)) :
-    ∫⁻ x in A, f x ∂μ ≤ ∫⁻ x in f ⁻¹' Ici a, f x ∂μ := by
-  obtain ⟨B, B_sub, B_mes, hAB⟩ := hA.exists_measurable_superset_ae_eq
-  rw [← measure_congr hAB] at h hA'
-  rw [← setLIntegral_congr hAB]; clear B_sub hAB hA A
-  obtain ⟨g, g_mes, hfg⟩ := hf
-  have h' : f ⁻¹' Ici a =ᵐ[μ] g ⁻¹' Ici a := (eventuallyEq_set.2 (hfg.mono fun x hx ↦ by simp [hx]))
-  rw [setLIntegral_congr_fun_ae B_mes (f := f) (g := g) (hfg.mono (by grind)),
-    setLIntegral_congr h',
-    setLIntegral_congr_fun_ae (by measurability) (f := f) (g := g) (hfg.mono (by grind))]
-  rw [measure_congr h'] at h
-  exact setLIntegral_le_of_measure_le' g_mes B_mes hA' h
+-- TODO : measurepreserving maps
 
 private lemma setLIntegral_le_of_equiLIntegrable {f : α → ℝ≥0∞} {A : Set α} (a : ℝ≥0∞)
     (hf : AEMeasurable f μ) (hA : NullMeasurableSet A μ) :
@@ -166,6 +110,8 @@ private lemma setLIntegral_le_of_equiLIntegrable {f : α → ℝ≥0∞} {A : Se
   apply (setLIntegral_mono (measurable_const (a := a)) (by grind)).trans
   exact lintegral_mono_set sdiff_subset
 
+-- TODO : finite measure -> bounded L1
+
 lemma unifLIntegrable_of_equiLIntegrable (hF' : ∀ i, AEMeasurable (F i) μ)
     (hF : EquiLIntegrable μ F) :
     Tendsto (fun ε ↦ ⨆ (i : ι) (A : Set α) (_ : NullMeasurableSet A μ) (_ : μ A < ε),
@@ -176,7 +122,7 @@ lemma unifLIntegrable_of_equiLIntegrable (hF' : ∀ i, AEMeasurable (F i) μ)
     ENNReal.nhds_top_basis.eventually_iff.1 (ENNReal.tendsto_nhds_zero.1 hF δ hδ)
   obtain ⟨b, hab, hb⟩ := exists_between ha
   have hδε' : ε - δ ≠ 0 := fun p ↦ hδε.not_ge (tsub_eq_zero_iff_le.1 p)
-  obtain ⟨κ, hκ, hκb⟩ := ENNReal.exists_pos_mul_lt hb.ne (ENNReal.sub_ne_zero_iff.2 hδε)
+  obtain ⟨κ, hκ, hκb⟩ := ENNReal.exists_pos_mul_lt hb.ne hδε'
   specialize haF (mem_Ioi.2 hab)
   refine ⟨κ, hκ, fun γ hγ ↦ ?_⟩
   simp only [iSup_le_iff] at haF ⊢

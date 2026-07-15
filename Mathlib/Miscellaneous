@@ -103,3 +103,42 @@ lemma test' (u v w : α → ℝ≥0∞) (hf : Measurable f) (hs : MeasurableSet 
   · intro x hx
     simp only [Pi.zero_apply, _root_.mul_eq_zero]
     exact Or.inl (hv hx.2)
+
+
+
+private lemma setLIntegral_le_of_measure_le' {f : α → ℝ≥0∞} {A : Set α} {a : ℝ≥0∞}
+    (hf : Measurable f) (hA : MeasurableSet A) (hA' : μ A ≠ ∞) (h : μ A ≤ μ (f ⁻¹' Ici a)) :
+    ∫⁻ x in A, f x ∂μ ≤ ∫⁻ x in f ⁻¹' Ici a, f x ∂μ := by
+  rw [← lintegral_inter_add_sdiff f A (hf (measurableSet_Ici (a := a))),
+    ← lintegral_inter_add_sdiff f (f ⁻¹' Ici a) hA, inter_comm]
+  apply add_le_add_right
+  apply le_trans (b := a * μ (A \ f ⁻¹' Ici a))
+  · rw [← setLIntegral_const]
+    refine setLIntegral_mono' (by measurability) fun x hx ↦ ?_
+    simp only [Set.mem_sdiff, mem_preimage, mem_Ici, not_le] at hx
+    exact hx.2.le
+  apply le_trans' (b := a * μ (f ⁻¹' Ici a \ A))
+  · rw [← setLIntegral_const]
+    refine setLIntegral_mono' (by measurability) fun x hx ↦ ?_
+    simp only [Set.mem_sdiff, mem_preimage, mem_Ici] at hx
+    exact hx.1
+  apply mul_le_mul_right
+  nth_rw 1 [← sdiff_inter_self_eq_sdiff, inter_comm]; nth_rw 2 [← sdiff_inter_self_eq_sdiff]
+  apply le_measure_sdiff.trans'
+  rw [measure_sdiff inter_subset_left (by measurability)
+    (measure_lt_top_mono inter_subset_left hA'.lt_top).ne]
+  gcongr
+
+lemma setLIntegral_le_of_measure_le {f : α → ℝ≥0∞} (A : Set α) {a : ℝ≥0∞} (hf : AEMeasurable f μ)
+    (hA : NullMeasurableSet A μ) (hA' : μ A ≠ ∞) (h : μ A ≤ μ (f ⁻¹' Ici a)) :
+    ∫⁻ x in A, f x ∂μ ≤ ∫⁻ x in f ⁻¹' Ici a, f x ∂μ := by
+  obtain ⟨B, B_sub, B_mes, hAB⟩ := hA.exists_measurable_superset_ae_eq
+  rw [← measure_congr hAB] at h hA'
+  rw [← setLIntegral_congr hAB]; clear B_sub hAB hA A
+  obtain ⟨g, g_mes, hfg⟩ := hf
+  have h' : f ⁻¹' Ici a =ᵐ[μ] g ⁻¹' Ici a := (eventuallyEq_set.2 (hfg.mono fun x hx ↦ by simp [hx]))
+  rw [setLIntegral_congr_fun_ae B_mes (f := f) (g := g) (hfg.mono (by grind)),
+    setLIntegral_congr h',
+    setLIntegral_congr_fun_ae (by measurability) (f := f) (g := g) (hfg.mono (by grind))]
+  rw [measure_congr h'] at h
+  exact setLIntegral_le_of_measure_le' g_mes B_mes hA' h

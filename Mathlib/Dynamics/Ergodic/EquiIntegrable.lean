@@ -47,17 +47,24 @@ noncomputable section
 
 lemma _root_.ENNReal.sub_le_sub_right {a b : ENNReal} (h : a ≤ b) (c : ENNReal) :
     a - c ≤ b - c := by
-  rw [ENNReal.sub_eq_sInf, ENNReal.sub_eq_sInf]
-  refine sInf_le_sInf fun x hx ↦ ?_
-  simp only [Set.mem_setOf_eq] at hx ⊢
-  exact h.trans hx
+  gcongr
 
 lemma _root_.ENNReal.sub_le_sub_left {a b : ENNReal} (h : a ≤ b) (c : ENNReal) :
     c - b ≤ c - a := by
-  rw [ENNReal.sub_eq_sInf, ENNReal.sub_eq_sInf]
-  refine sInf_le_sInf fun x hx ↦ ?_
-  simp only [Set.mem_setOf_eq] at hx ⊢
-  exact hx.trans (add_le_add_right h x)
+  gcongr
+
+lemma _root_.ENNReal.sub_eq_zero {a b : ENNReal} (h : a ≤ b) :
+    a - b = 0 := by
+  exact tsub_eq_zero_of_le h
+
+lemma _root_.ENNReal.sub_eq_zero_iff {a b : ENNReal} : a - b = 0 ↔ a ≤ b := by
+  exact tsub_eq_zero_iff_le
+
+lemma _root_.ENNReal.sub_ne_zero_iff {a b : ENNReal} : a - b ≠ 0 ↔ b < a :=
+  not_iff_not.1 (by simp [ENNReal.sub_eq_zero_iff])
+
+lemma _root.ENNReal.sub_add_cancel {a b : ENNReal} (h : b ≤ a) : a - b + b = a := by
+  exact tsub_add_cancel_of_le h
 
 namespace MeasureTheory
 
@@ -74,18 +81,18 @@ lemma measure_preimage_lt_top {f : α → ℝ≥0∞} {a : ℝ≥0∞} (hf : AEM
   · exact (ha h).rec
   · exact h ▸ zero_lt_top
 
-def EquiLIntegrable' (μ : Measure α) (F : ι → α → ℝ≥0∞) :=
+def EquiLIntegrable (μ : Measure α) (F : ι → α → ℝ≥0∞) :=
   Tendsto (fun a ↦ ⨆ i, ∫⁻ x in F i ⁻¹' Ici a, F i x ∂μ) (nhds ∞) (nhds 0)
 
-lemma equiLIntegrable_empty' (h : IsEmpty ι) : EquiLIntegrable' μ F := by
-  simp [EquiLIntegrable']
+lemma equiLIntegrable_empty [IsEmpty ι] : EquiLIntegrable μ F := by
+  simp [EquiLIntegrable]
 
-lemma equiLIntegrable_const' {f : α → ℝ≥0∞} (h : ∀ i, F i = f) (hf : AEMeasurable f μ)
+lemma equiLIntegrable_const {f : α → ℝ≥0∞} (h : ∀ i, F i = f) (hf : AEMeasurable f μ)
     (hf' : ∫⁻ x, f x ∂μ ≠ ∞) :
-    EquiLIntegrable' μ F := by
-  rcases isEmpty_or_nonempty ι with hι | hι
-  · exact equiLIntegrable_empty' hι
-  simp only [EquiLIntegrable', h, ciSup_const]
+    EquiLIntegrable μ F := by
+  rcases isEmpty_or_nonempty ι with _ | _
+  · exact equiLIntegrable_empty
+  simp only [EquiLIntegrable, h, ciSup_const]
   have h₁ : ∀ᶠ a in nhds ∞, AEMeasurable ((f ⁻¹' Ici a).indicator f) μ :=
     Eventually.of_forall fun a ↦ hf.indicator₀ (hf.nullMeasurableSet_preimage measurableSet_Ici)
   have h₂ : ∀ᶠ a in nhds ∞, ∀ᵐ x ∂μ, (f ⁻¹' Ici a).indicator f x ≤ f x := by
@@ -102,48 +109,7 @@ lemma equiLIntegrable_const' {f : α → ℝ≥0∞} (h : ∀ i, F i = f) (hf : 
   simp only [lintegral_const, zero_mul] at key
   exact key.congr fun a ↦ lintegral_indicator₀ (hf.nullMeasurableSet_preimage measurableSet_Ici) f
 
-structure EquiLIntegrable (μ : Measure α) (F : ι → α → ℝ≥0∞) : Prop where
-  protected aemeasurable : ∀ i, AEMeasurable (F i) μ
-  protected L1bounded : ⨆ i, ∫⁻ x, F i x ∂μ ≠ ∞
-  protected tendsto : Tendsto (fun a ↦ ⨆ i, ∫⁻ x in F i ⁻¹' Ici a, F i x ∂μ) (nhds ∞) (nhds 0)
-
-lemma equiLIntegrable_empty [IsEmpty ι] : EquiLIntegrable μ F :=
-  { aemeasurable := by simp
-    L1bounded := by simp
-    tendsto := by simp }
-
-
--- Remplacer par inégalité Markov
-lemma equiLIntegrable_const {f : α → ℝ≥0∞} (h : ∀ i, F i = f) (hf : AEMeasurable f μ)
-    (hf' : ∫⁻ x, f x ∂μ ≠ ∞) :
-    EquiLIntegrable μ F :=
-  { aemeasurable := fun i ↦ (h i) ▸ hf
-    L1bounded := by
-      rcases isEmpty_or_nonempty ι with hι | hι
-      · exact equiLIntegrable_empty.L1bounded
-      · simpa only [h, ciSup_const]
-    tendsto := by
-      rcases isEmpty_or_nonempty ι with hι | hι
-      · exact equiLIntegrable_empty.tendsto
-      simp only [h, ciSup_const]
-      have h₁ : ∀ᶠ a in nhds ∞, AEMeasurable ((f ⁻¹' Ici a).indicator f) μ :=
-        Eventually.of_forall fun a ↦ hf.indicator₀ (hf.nullMeasurableSet_preimage measurableSet_Ici)
-      have h₂ : ∀ᶠ a in nhds ∞, ∀ᵐ x ∂μ, (f ⁻¹' Ici a).indicator f x ≤ f x := by
-        apply Eventually.of_forall fun a ↦ Eventually.of_forall (Pi.le_def.1 ?_)
-        exact indicator_le_self' (fun _ _ ↦ zero_le)
-      have h₃ : ∀ᵐ x ∂μ, Tendsto (fun a ↦ (f ⁻¹' Ici a).indicator f x) (nhds ∞) (nhds 0) := by
-        filter_upwards [measure_eq_zero_iff_ae_notMem.1 (measure_eq_top_of_lintegral_ne_top hf hf')]
-          with x hx
-        rw [← ne_eq] at hx
-        apply tendsto_nhds_of_eventually_eq (ENNReal.nhds_top_basis.eventually_iff.2 _)
-        obtain ⟨b, bx, b_top⟩ := exists_between hx.lt_top
-        exact ⟨b, b_top, fun y hy ↦ indicator_of_notMem (by grind) f⟩
-      have key := tendsto_lintegral_filter_of_dominated_convergence' f h₁ h₂ hf' h₃
-      simp only [lintegral_const, zero_mul] at key
-      refine key.congr fun a ↦ ?_
-      exact lintegral_indicator₀ (hf.nullMeasurableSet_preimage measurableSet_Ici) f }
-
-lemma _root_.Finite.equiLIntegrable' [Finite ι] (h : ∀ i, AEMeasurable (F i) μ)
+lemma _root_.Finite.equiLIntegrable [Finite ι] (h : ∀ i, AEMeasurable (F i) μ)
     (h' : ∀ i, ∫⁻ x, F i x ∂μ ≠ ∞) :
     EquiLIntegrable μ F := by
   sorry
@@ -185,19 +151,44 @@ lemma setLIntegral_le_of_measure_le {f : α → ℝ≥0∞} (A : Set α) {a : �
   rw [measure_congr h'] at h
   exact setLIntegral_le_of_measure_le' g_mes B_mes hA' h
 
--- Utiliser inégalité Markov
-lemma unifLIntegrable_of_equiLIntegrable' (h : EquiLIntegrable' μ F) :
+private lemma setLIntegral_le_of_equiLIntegrable {f : α → ℝ≥0∞} {A : Set α} (a : ℝ≥0∞)
+    (hf : AEMeasurable f μ) (hA : NullMeasurableSet A μ) :
+    ∫⁻ x in A, f x ∂μ ≤ a * μ A + ∫⁻ x in f ⁻¹' Ici a, f x ∂μ := by
+  obtain ⟨B, _, hB, hAB⟩ := hA.exists_measurable_superset_ae_eq
+  rw [← measure_congr hAB, ← setLIntegral_congr hAB]
+  obtain ⟨g, g_mes, hfg⟩ := hf
+  have h : f ⁻¹' Ici a =ᵐ[μ] g ⁻¹' Ici a := (eventuallyEq_set.2 (hfg.mono (fun x hx ↦ by grind)))
+  rw [setLIntegral_congr h, setLIntegral_congr_fun_ae (g := g) hB (hfg.mono (by grind)),
+    setLIntegral_congr_fun_ae (f := f) (g := g) (by measurability) (hfg.mono (by grind))]
+  rw [← lintegral_inter_add_sdiff g B (g_mes (measurableSet_Ici (a := a))), add_comm]
+  apply add_le_add _ (lintegral_mono_set inter_subset_right)
+  rw [← setLIntegral_const]
+  apply (setLIntegral_mono (measurable_const (a := a)) (by grind)).trans
+  exact lintegral_mono_set sdiff_subset
+
+lemma unifLIntegrable_of_equiLIntegrable (hF' : ∀ i, AEMeasurable (F i) μ)
+    (hF : EquiLIntegrable μ F) :
     Tendsto (fun ε ↦ ⨆ (i : ι) (A : Set α) (_ : NullMeasurableSet A μ) (_ : μ A < ε),
       ∫⁻ x in A, F i x ∂μ) (nhds 0) (nhds 0) := by
-  refine ENNReal.tendsto_nhds_zero.2 fun ε hε ↦ ENNReal.nhds_zero_basis.eventually_iff.2 ?_
-  obtain ⟨a, ha⟩ := ENNReal.nhds_top_basis.eventually_iff.1 (ENNReal.tendsto_nhds_zero.1 h ε hε)
-  by_cases hfa : ∃ i, 0 < μ ((F i) ⁻¹' Ici a)
-  · sorry
-  · sorry
+  refine ENNReal.tendsto_nhds_zero.2 fun ε hε ↦ nhds_zero_basis.eventually_iff.2 ?_
+  obtain ⟨δ, hδ, hδε⟩ := exists_between hε
+  obtain ⟨a, ha, haF⟩ :=
+    ENNReal.nhds_top_basis.eventually_iff.1 (ENNReal.tendsto_nhds_zero.1 hF δ hδ)
+  obtain ⟨b, hab, hb⟩ := exists_between ha
+  have hδε' : ε - δ ≠ 0 := fun p ↦ hδε.not_ge (tsub_eq_zero_iff_le.1 p)
+  obtain ⟨κ, hκ, hκb⟩ := ENNReal.exists_pos_mul_lt hb.ne (ENNReal.sub_ne_zero_iff.2 hδε)
+  specialize haF (mem_Ioi.2 hab)
+  refine ⟨κ, hκ, fun γ hγ ↦ ?_⟩
+  simp only [iSup_le_iff] at haF ⊢
+  intro i A hA hAμ
+  apply (setLIntegral_le_of_equiLIntegrable b (hF' i) hA).trans
+  rw [← tsub_add_cancel_of_le hδε.le, mul_comm (a := b)]
+  apply add_le_add (hκb.le.trans' _) (haF i)
+  exact mul_le_mul_left (hAμ.le.trans (mem_Iio.1 hγ).le) b
 
-lemma unifLIntegrable_of_equiLIntegrable_apply' {A : ι → Set α} {l : Filter ι}
-    (hF : EquiLIntegrable' μ F) (hA : ∀ i, NullMeasurableSet (A i) μ)
-    (h : Tendsto (μ ∘ A) l (nhds 0)) :
+lemma unifLIntegrable_of_equiLIntegrable_apply {A : ι → Set α} {l : Filter ι}
+    (hF' : ∀ i, AEMeasurable (F i) μ) (hF : EquiLIntegrable μ F)
+    (hA : ∀ i, NullMeasurableSet (A i) μ) (h : Tendsto (μ ∘ A) l (nhds 0)) :
     Tendsto (fun i ↦ ∫⁻ x in A i, F i x ∂μ) l (nhds 0) := by
   sorry
 

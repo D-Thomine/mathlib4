@@ -141,10 +141,6 @@ lemma UniformLIntegrable.unifLIntegrable (hF : ∀ i, AEMeasurable (F i) μ)
   apply add_le_add (hκb.le.trans' _) (haF i)
   exact mul_le_mul_left (hAμ.trans (mem_Iio.1 hγ).le) b
 
-lemma test {l : Filter α} :
-    Tendsto (fun x ↦ x) l l := by
-  exact tendsto_def.1 fun _ a ↦ a
-
 lemma UnifLIntegrable.uniformLIntegrable_of_iSup_lintegral_lt_top (hF : ∀ i, AEMeasurable (F i) μ)
     (h : UnifLIntegrable F μ) (h' : ⨆ i, ∫⁻ x, F i x ∂μ ≠ ∞) :
     UniformLIntegrable F μ := by

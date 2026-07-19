@@ -624,6 +624,11 @@ theorem lintegral_inter_add_sdiff {B : Set α} (f : α → ℝ≥0∞) (A : Set 
     ∫⁻ x in A ∩ B, f x ∂μ + ∫⁻ x in A \ B, f x ∂μ = ∫⁻ x in A, f x ∂μ := by
   rw [← lintegral_add_measure, restrict_inter_add_sdiff _ hB]
 
+theorem lintegral_inter_add_sdiff₀ {B : Set α} (f : α → ℝ≥0∞) (A : Set α)
+    (hB : NullMeasurableSet B μ) :
+    ∫⁻ x in A ∩ B, f x ∂μ + ∫⁻ x in A \ B, f x ∂μ = ∫⁻ x in A, f x ∂μ := by
+  rw [← lintegral_add_measure, restrict_inter_add_sdiff₀ _ hB]
+
 @[deprecated (since := "2026-06-03")] alias lintegral_inter_add_diff := lintegral_inter_add_sdiff
 
 theorem lintegral_add_compl (f : α → ℝ≥0∞) {A : Set α} (hA : MeasurableSet A) :

@@ -259,19 +259,6 @@ theorem setLIntegral_le_lintegral (s : Set α) (f : α → ℝ≥0∞) :
     ∫⁻ x in s, f x ∂μ ≤ ∫⁻ x, f x ∂μ :=
   lintegral_mono' Measure.restrict_le_self le_rfl
 
-lemma iInf_mul_le_setLIntegral (f : α → ℝ≥0∞) {s : Set α} (hs : MeasurableSet s) :
-    (⨅ x ∈ s, f x) * μ s ≤ ∫⁻ x in s, f x ∂μ := by
-  calc (⨅ x ∈ s, f x) * μ s
-  _ = ∫⁻ y in s, ⨅ x ∈ s, f x ∂μ := by simp
-  _ ≤ ∫⁻ x in s, f x ∂μ := setLIntegral_mono' hs fun x hx ↦ iInf₂_le x hx
-
-lemma setLIntegral_le_iSup_mul (f : α → ℝ≥0∞) {s : Set α} (hs : MeasurableSet s) :
-    ∫⁻ x in s, f x ∂μ ≤ (⨆ x ∈ s, f x) * μ s := by
-  calc ∫⁻ x in s, f x ∂μ
-  _ ≤ ∫⁻ y in s, ⨆ x ∈ s, f x ∂μ :=
-    setLIntegral_mono' hs fun x hx ↦ le_iSup₂ (f := fun x _ ↦ f x) x hx
-  _ = (⨆ x ∈ s, f x) * μ s := by simp
-
 theorem lintegral_congr_ae {f g : α → ℝ≥0∞} (h : f =ᵐ[μ] g) : ∫⁻ a, f a ∂μ = ∫⁻ a, g a ∂μ :=
   le_antisymm (lintegral_mono_ae <| h.le) (lintegral_mono_ae <| h.symm.le)
 
@@ -294,6 +281,33 @@ theorem setLIntegral_congr_fun {f g : α → ℝ≥0∞} {s : Set α} (hs : Meas
 lemma setLIntegral_eq_zero {f : α → ℝ≥0∞} {s : Set α} (hs : MeasurableSet s) (h's : EqOn f 0 s) :
     ∫⁻ x in s, f x ∂μ = 0 := by
   simp [setLIntegral_congr_fun hs h's]
+
+lemma iInf_mul_le_setLIntegral (f : α → ℝ≥0∞) {s : Set α} (hs : MeasurableSet s) :
+    (⨅ x ∈ s, f x) * μ s ≤ ∫⁻ x in s, f x ∂μ := by
+  calc (⨅ x ∈ s, f x) * μ s
+  _ = ∫⁻ y in s, ⨅ x ∈ s, f x ∂μ := by simp
+  _ ≤ ∫⁻ x in s, f x ∂μ := setLIntegral_mono' hs fun x hx ↦ iInf₂_le x hx
+
+lemma iInf_mul_le_setLIntegral₀ (f : α → ℝ≥0∞) {s : Set α}
+    (hs : NullMeasurableSet s μ) :
+    (⨅ x ∈ s, f x) * μ s ≤ ∫⁻ x in s, f x ∂μ := by
+  obtain ⟨t, hst, ht, htμ⟩ := hs.exists_measurable_subset_ae_eq
+  rw [← setLIntegral_congr htμ, ← measure_congr htμ]
+  exact (mul_le_mul_left (iInf_le_iInf_of_subset hst) (μ t)).trans (iInf_mul_le_setLIntegral f ht)
+
+lemma setLIntegral_le_iSup_mul (f : α → ℝ≥0∞) {s : Set α} (hs : MeasurableSet s) :
+    ∫⁻ x in s, f x ∂μ ≤ (⨆ x ∈ s, f x) * μ s := by
+  calc ∫⁻ x in s, f x ∂μ
+  _ ≤ ∫⁻ y in s, ⨆ x ∈ s, f x ∂μ :=
+    setLIntegral_mono' hs fun x hx ↦ le_iSup₂ (f := fun x _ ↦ f x) x hx
+  _ = (⨆ x ∈ s, f x) * μ s := by simp
+
+lemma setLIntegral_le_iSup_mul₀ (f : α → ℝ≥0∞) {s : Set α}
+    (hs : NullMeasurableSet s μ) :
+    ∫⁻ x in s, f x ∂μ ≤ (⨆ x ∈ s, f x) * μ s := by
+  obtain ⟨t, hst, ht, htμ⟩ := hs.exists_measurable_subset_ae_eq
+  rw [← setLIntegral_congr htμ, ← measure_congr htμ]
+  exact (setLIntegral_le_iSup_mul f ht).trans (mul_le_mul_left (iSup_le_iSup_of_subset hst) (μ t))
 
 section
 

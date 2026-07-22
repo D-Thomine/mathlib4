@@ -43,27 +43,27 @@ namespace Measure
 structure QuasiMeasurePreserving {m0 : MeasurableSpace α} (f : α → β)
   (μa : Measure α := by volume_tac)
   (μb : Measure β := by volume_tac) : Prop where
-  protected measurable : Measurable f
+  protected aemeasurable : AEMeasurable f μa
   protected absolutelyContinuous : μa.map f ≪ μb
 
-attribute [fun_prop] QuasiMeasurePreserving.measurable
+attribute [fun_prop] QuasiMeasurePreserving.aemeasurable
 
 namespace QuasiMeasurePreserving
 
 @[fun_prop]
 protected theorem id {_m0 : MeasurableSpace α} (μ : Measure α) : QuasiMeasurePreserving id μ μ :=
-  ⟨measurable_id, map_id.absolutelyContinuous⟩
+  ⟨aemeasurable_id, map_id.absolutelyContinuous⟩
 
 variable {μa μa' : Measure α} {μb μb' : Measure β} {μc : Measure γ} {f : α → β}
 
 protected theorem _root_.Measurable.quasiMeasurePreserving
-    {_m0 : MeasurableSpace α} (hf : Measurable f) (μ : Measure α) :
+    {_m0 : MeasurableSpace α} (μ : Measure α) (hf : AEMeasurable f μ) :
     QuasiMeasurePreserving f μ (μ.map f) :=
   ⟨hf, AbsolutelyContinuous.rfl⟩
 
 theorem mono_left (h : QuasiMeasurePreserving f μa μb) (ha : μa' ≪ μa) :
     QuasiMeasurePreserving f μa' μb :=
-  ⟨h.1, (ha.map h.1).trans h.2⟩
+  ⟨ha.aemeasurable h.1, (ha.map' h.1).trans h.2⟩
 
 theorem mono_right (h : QuasiMeasurePreserving f μa μb) (ha : μb ≪ μb') :
     QuasiMeasurePreserving f μa μb' :=
@@ -74,10 +74,12 @@ theorem mono (ha : μa' ≪ μa) (hb : μb ≪ μb') (h : QuasiMeasurePreserving
     QuasiMeasurePreserving f μa' μb' :=
   (h.mono_left ha).mono_right hb
 
+#check AEMeasurable.comp_aemeasurable
+
 @[fun_prop]
 protected theorem comp {g : β → γ} {f : α → β} (hg : QuasiMeasurePreserving g μb μc)
     (hf : QuasiMeasurePreserving f μa μb) : QuasiMeasurePreserving (g ∘ f) μa μc :=
-  ⟨hg.measurable.comp hf.measurable, by
+  ⟨AEMeasurable.comp_aemeasurable hg.aemeasurable hf.aemeasurable, by
     rw [← map_map hg.1 hf.1]
     exact (hf.2.map hg.1).trans hg.2⟩
 

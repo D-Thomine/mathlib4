@@ -178,6 +178,18 @@ alias ae_mono' := AbsolutelyContinuous.ae_le
 theorem AbsolutelyContinuous.ae_eq (h : μ ≪ ν) {f g : α → δ} (h' : f =ᵐ[ν] g) : f =ᵐ[μ] g :=
   h.ae_le h'
 
+theorem AbsolutelyContinuous.aemeasurable [MeasurableSpace δ] (h : ν ≪ μ) {f : α → δ}
+    (hf : AEMeasurable f μ) :
+    AEMeasurable f ν :=
+  hf.mono (ae_le_iff_absolutelyContinuous.2 h)
+
+theorem AbsolutelyContinuous.map' (h : μ ≪ ν) {f : α → β} (hf : AEMeasurable f ν) :
+    μ.map f ≪ ν.map f := by
+  refine AbsolutelyContinuous.mk fun s hs hsν ↦ ?_
+  rw [map_apply_of_aemeasurable hf hs] at hsν
+  rw [map_apply_of_aemeasurable (h.aemeasurable hf) hs]
+  exact h hsν
+
 end Measure
 
 protected theorem AEDisjoint.of_absolutelyContinuous

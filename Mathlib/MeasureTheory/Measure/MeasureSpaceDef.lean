@@ -444,6 +444,9 @@ theorem ae_eq_mk (h : AEMeasurable f μ) : f =ᵐ[μ] h.mk f :=
 theorem congr (hf : AEMeasurable f μ) (h : f =ᵐ[μ] g) : AEMeasurable g μ :=
   ⟨hf.mk f, hf.measurable_mk, h.symm.trans hf.ae_eq_mk⟩
 
+theorem mono (hf : AEMeasurable f μ) (h : ae ν ≤ ae μ) : AEMeasurable f ν :=
+  ⟨hf.mk f, hf.measurable_mk, hf.ae_eq_mk.filter_mono h⟩
+
 end AEMeasurable
 
 theorem aemeasurable_congr (h : f =ᵐ[μ] g) : AEMeasurable f μ ↔ AEMeasurable g μ :=

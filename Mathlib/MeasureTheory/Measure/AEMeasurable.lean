@@ -379,6 +379,16 @@ theorem MeasureTheory.Measure.restrict_map_of_aemeasurable {f : α → δ} (hf :
       apply measure_congr
       apply (EventuallyEq.refl _ _).inter (hf.ae_eq_mk.symm.preimage s)
 
+theorem MeasureTheory.Measure.restrict_map_of_aemeasurable₀ {f : α → δ} (hf : AEMeasurable f μ)
+    {s : Set δ} (hs : NullMeasurableSet s (map f μ)) :
+    (μ.map f).restrict s = (μ.restrict <| f ⁻¹' s).map f := by
+  obtain ⟨t, hst, ht, htμ⟩ := hs.exists_measurable_subset_ae_eq
+  rw [← restrict_congr_set htμ, restrict_map_of_aemeasurable hf ht]
+  congr 1
+  apply restrict_congr_set
+  simp only [ae_eq_set, ← preimage_sdiff] at htμ ⊢
+  exact ⟨preimage_null_of_map_null hf htμ.1, preimage_null_of_map_null hf htμ.2⟩
+
 theorem MeasureTheory.Measure.map_mono_of_aemeasurable {f : α → δ} (h : μ ≤ ν)
     (hf : AEMeasurable f ν) : μ.map f ≤ ν.map f :=
   le_iff.2 fun s hs ↦ by simpa [hf, hs, hf.mono_measure h] using h (f ⁻¹' s)

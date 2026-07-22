@@ -6,7 +6,7 @@ Authors: Mario Carneiro, Johannes Hölzl
 module
 
 public import Mathlib.Dynamics.Ergodic.MeasurePreserving
-public import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+public import Mathlib.MeasureTheory.Integral.Lebesgue.UniformIntegrable
 
 /-!
 # Behavior of the Lebesgue integral under maps
@@ -18,7 +18,7 @@ namespace MeasureTheory
 
 open Set Filter ENNReal SimpleFunc
 
-variable {α β : Type*} [MeasurableSpace α] [MeasurableSpace β] {μ : Measure α} {ν : Measure β}
+variable {α β ι : Type*} [MeasurableSpace α] [MeasurableSpace β] {μ : Measure α} {ν : Measure β}
 
 section Map
 
@@ -67,6 +67,13 @@ theorem lintegral_comp' {f : β → ℝ≥0∞} {g : α → β} (hf : AEMeasurab
 theorem setLIntegral_map {f : β → ℝ≥0∞} {g : α → β} {s : Set β}
     (hs : MeasurableSet s) (hf : Measurable f) (hg : Measurable g) :
     ∫⁻ y in s, f y ∂map g μ = ∫⁻ x in g ⁻¹' s, f (g x) ∂μ := by
+  rw [restrict_map hg hs, lintegral_map hf hg]
+
+theorem setLIntegral_map' {f : β → ℝ≥0∞} {g : α → β} {s : Set β}
+    (hs : NullMeasurableSet s (map g μ)) (hf : AEMeasurable f (map g μ)) (hg : Measurable g) :
+    ∫⁻ y in s, f y ∂map g μ = ∫⁻ x in g ⁻¹' s, f (g x) ∂μ := by
+  rw [restrict_map_of_aemeasurable hg.aemeasurable]
+  rw [lintegral_map' hf hg.aemeasurable]
   rw [restrict_map hg hs, lintegral_map hf hg]
 
 theorem lintegral_indicator_const_comp {f : α → β} {s : Set β}
@@ -121,12 +128,23 @@ include hg
 theorem lintegral_comp {f : β → ℝ≥0∞} (hf : Measurable f) :
     ∫⁻ a, f (g a) ∂μ = ∫⁻ b, f b ∂ν := by rw [← hg.map_eq, lintegral_map hf hg.measurable]
 
+theorem lintegral_comp' {f : β → ℝ≥0∞} (hf : AEMeasurable f ν) :
+    ∫⁻ a, f (g a) ∂μ = ∫⁻ b, f b ∂ν := by
+  rw [← hg.map_eq, lintegral_map' (hg.map_eq ▸ hf) hg.aemeasurable]
+
 theorem lintegral_comp_emb (hge : MeasurableEmbedding g) (f : β → ℝ≥0∞) :
     ∫⁻ a, f (g a) ∂μ = ∫⁻ b, f b ∂ν := by rw [← hg.map_eq, hge.lintegral_map]
 
 theorem setLIntegral_comp_preimage
     {s : Set β} (hs : MeasurableSet s) {f : β → ℝ≥0∞} (hf : Measurable f) :
     ∫⁻ a in g ⁻¹' s, f (g a) ∂μ = ∫⁻ b in s, f b ∂ν := by
+  rw [← hg.map_eq, setLIntegral_map hs hf hg.measurable]
+
+theorem setLIntegral_comp_preimage'
+    {s : Set β} (hs : NullMeasurableSet s ν) {f : β → ℝ≥0∞} (hf : AEMeasurable f ν) :
+    ∫⁻ a in g ⁻¹' s, f (g a) ∂μ = ∫⁻ b in s, f b ∂ν := by
+
+  sorry
   rw [← hg.map_eq, setLIntegral_map hs hf hg.measurable]
 
 theorem setLIntegral_comp_preimage_emb (hge : MeasurableEmbedding g) (f : β → ℝ≥0∞) (s : Set β) :
@@ -136,6 +154,20 @@ theorem setLIntegral_comp_preimage_emb (hge : MeasurableEmbedding g) (f : β →
 theorem setLIntegral_comp_emb (hge : MeasurableEmbedding g) (f : β → ℝ≥0∞) (s : Set α) :
     ∫⁻ a in s, f (g a) ∂μ = ∫⁻ b in g '' s, f b ∂ν := by
   rw [← hg.setLIntegral_comp_preimage_emb hge, Set.preimage_image_eq _ hge.injective]
+
+lemma test {F : ι → α → α} {f : α → ℝ≥0∞} (hF : ∀ i, MeasurePreserving (F i) μ μ)
+    (hf : ∫⁻ x, f x ∂μ ≠ ∞) :
+    UniformLIntegrable (fun i ↦ f ∘ (F i)) μ := by
+  rcases isEmpty_or_nonempty ι with _ | _
+  · exact uniformLIntegrable_empty
+  have i : ι := Classical.ofNonempty
+  have key (i : ι) (a : ℝ≥0∞) : ∫⁻ x in (f ∘ (F i)) ⁻¹' Ici a, (f ∘ (F i)) x ∂μ
+    = ∫⁻ x in f ⁻¹' Ici a, f x ∂μ := by
+    simp only [preimage_comp, Function.comp_apply]
+    apply (hF i).setLIntegral_comp_preimage
+    sorry
+  rw [uniformLIntegrable_def]
+  sorry
 
 end MeasurePreserving
 

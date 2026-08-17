@@ -152,39 +152,12 @@ nonrec theorem NNReal.tendsto_rpow_atTop {y : ℝ} (hy : 0 < y) :
   intro a ha
   exact mod_cast hc a (Real.toNNReal_le_iff_le_coe.mp ha)
 
-theorem ENNReal.tendsto_rpow_nhds_top {y : ℝ} (hy : 0 < y) :
+theorem ENNReal.tendsto_rpow_at_top {y : ℝ} (hy : 0 < y) :
     Tendsto (fun x : ℝ≥0∞ ↦ x ^ y) (𝓝 ∞) (𝓝 ∞) := by
   rw [nhds_top_basis_Ici.tendsto_iff nhds_top_basis_Ici]
   intro x hx
   refine ⟨x ^ y⁻¹, (rpow_ne_top_of_nonneg (inv_nonneg.2 hy.le) hx.ne).lt_top, fun z hz ↦ ?_⟩
   exact (rpow_inv_le_iff hy).1 hz
-
-@[deprecated (since := "2026-08-16")] alias ENNReal.tendsto_rpow_at_top :=
-  ENNReal.tendsto_rpow_nhds_top
-
-theorem ENNReal.tendsto_rpow_nhds_top_of_neg {y : ℝ} (hy : y < 0) :
-    Tendsto (fun x : ℝ≥0∞ ↦ x ^ y) (𝓝 ∞) (𝓝 0) := by
-  rw [nhds_top_basis_Ici.tendsto_iff nhds_zero_basis_Iic]
-  intro x hx
-  rcases eq_top_or_lt_top x with rfl | hx'
-  · exact ⟨0, zero_lt_top, by simp⟩
-  refine ⟨x ^ y⁻¹, (rpow_ne_top_of_nonneg' hx hx'.ne).lt_top, fun z hz ↦ ?_⟩
-  exact (rpow_inv_le_iff_of_neg hy).1 hz
-
-theorem ENNReal.tendsto_rpow_nhds_zero {y : ℝ} (hy : 0 < y) :
-    Tendsto (fun x : ℝ≥0∞ ↦ x ^ y) (𝓝 0) (𝓝 0) := by
-  rw [nhds_zero_basis_Iic.tendsto_iff nhds_zero_basis_Iic]
-  intro x hx
-  exact ⟨x ^ y⁻¹, rpow_pos_of_nonneg hx (inv_nonneg.2 hy.le), fun z hz ↦ (le_rpow_inv_iff hy).1 hz⟩
-
-theorem ENNReal.tendsto_rpow_nhds_zero_of_neg {y : ℝ} (hy : y < 0) :
-    Tendsto (fun x : ℝ≥0∞ ↦ x ^ y) (𝓝 0) (𝓝 ∞) := by
-  rw [nhds_zero_basis_Iic.tendsto_iff nhds_top_basis_Ici]
-  intro x hx
-  rcases eq_zero_or_pos x with rfl | hx'
-  · exact ⟨∞, zero_lt_top, by simp⟩
-  refine ⟨x ^ y⁻¹, rpow_pos hx' hx.ne, fun z hz ↦ ?_⟩
-  exact (le_rpow_inv_iff_of_neg hy).1 hz
 
 end Limits
 

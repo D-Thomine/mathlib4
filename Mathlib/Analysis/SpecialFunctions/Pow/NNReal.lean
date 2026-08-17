@@ -817,6 +817,10 @@ theorem le_rpow_inv_iff {x y : ℝ≥0∞} {z : ℝ} (hz : 0 < z) : x ≤ y ^ z�
   nth_rw 1 [← @mul_inv_cancel₀ _ _ z hz.ne']
   rw [rpow_mul, @rpow_le_rpow_iff _ _ z⁻¹ (by simp [hz])]
 
+theorem rpow_inv_le_iff_of_neg {x y : ℝ≥0∞} {z : ℝ} (hz : z < 0) : x ^ z⁻¹ ≤ y ↔ y ^ z ≤ x := by
+  nth_rw 1 [← neg_neg z, inv_neg, rpow_neg, inv_le_iff_inv_le, le_rpow_inv_iff (neg_pos.2 hz),
+    inv_rpow, ← rpow_neg, neg_neg]
+
 theorem rpow_inv_lt_iff {x y : ℝ≥0∞} {z : ℝ} (hz : 0 < z) : x ^ z⁻¹ < y ↔ x < y ^ z := by
   simp only [← not_le, le_rpow_inv_iff hz]
 
@@ -829,6 +833,10 @@ theorem rpow_inv_le_iff {x y : ℝ≥0∞} {z : ℝ} (hz : 0 < z) : x ^ z⁻¹ �
   nth_rw 1 [← ENNReal.rpow_one y]
   nth_rw 1 [← @mul_inv_cancel₀ _ _ z hz.ne.symm]
   rw [ENNReal.rpow_mul, ENNReal.rpow_le_rpow_iff (inv_pos.2 hz)]
+
+theorem le_rpow_inv_iff_of_neg {x y : ℝ≥0∞} {z : ℝ} (hz : z < 0) : x ≤ y ^ z⁻¹ ↔ y ≤ x ^ z := by
+  nth_rw 1 [← neg_neg z, inv_neg, rpow_neg, le_inv_iff_le_inv, rpow_inv_le_iff (neg_pos.2 hz),
+    inv_rpow, ← rpow_neg, neg_neg]
 
 @[gcongr]
 theorem rpow_lt_rpow_of_exponent_lt {x : ℝ≥0∞} {y z : ℝ} (hx : 1 < x) (hx' : x ≠ ⊤) (hyz : y < z) :

@@ -276,7 +276,8 @@ private theorem tendsto_Lp_of_tendsto_ae_of_meas (hp : 1 ≤ p) (hp' : p ≠ ∞
   have hmfngE : AEStronglyMeasurable _ μ := (((hf n).sub hg).indicator hmE).aestronglyMeasurable
   have hfngEε := calc
     eLpNorm (E.indicator (f n - g)) p μ
-      = eLpNorm (f n - g) p (μ.restrict E) := eLpNorm_indicator_eq_eLpNorm_restrict hmE
+      = eLpNorm (f n - g) p (μ.restrict E) :=
+        eLpNorm_indicator_eq_eLpNorm_restrict hmE.nullMeasurableSet
     _ ≤ ε / 3                              := hfngε n hn
   -- get exterior estimates
   have hmgEc : AEStronglyMeasurable _ μ := (hg.indicator hmE.compl).aestronglyMeasurable
@@ -368,7 +369,7 @@ theorem tendstoInMeasure_iff_tendsto_Lp (hp : 1 ≤ p) (hp' : p ≠ ∞)
   mp h := tendsto_Lp_of_tendstoInMeasure hp hp' (fun n => (hf n).1) hg h.2.1 h.2.2 h.1
   mpr h := ⟨tendstoInMeasure_of_tendsto_eLpNorm (lt_of_lt_of_le zero_lt_one hp).ne'
         (fun n => (hf n).aestronglyMeasurable) hg.aestronglyMeasurable h,
-      unifIntegrable_of_tendsto_Lp hp hp' hf hg h,
+      unifIntegrable_of_tendsto_Lp hp' hf hg h,
       unifTight_of_tendsto_Lp hp' hf hg h⟩
 
 end VitaliConvergence

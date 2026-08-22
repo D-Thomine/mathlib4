@@ -431,9 +431,8 @@ theorem UnifLpTail.unifIntegrable (hp : p ≠ ∞) (hf : ∀ i, AEStronglyMeasur
     UnifIntegrable f p μ := by
   rcases eq_or_ne p 0 with rfl | hp'
   · exact unifIntegrable_zero_exponent
-  -- The proof relies on `eLpNorm_restrict_le_const_add_eLpNorm`,
-  -- with a good choice of parameter `M` depending on the parameter `ε`
-  -- in the definition of `UnifIntegrable`.
+  -- The proof relies on `eLpNorm_restrict_le_const_add_eLpNorm`, with a good choice of parameter
+  -- `M(ε)` depending on the parameter `ε` in the definition of `UnifIntegrable`.
   -- On the one hand, `μ s` is of size at most `ε`, so we want `M(ε) * ε ^ p.toReal⁻¹` to vanish.
   -- On the other hand, we want `M(ε)` to diverge in order to use `UnifLpTail f p μ`.
   -- We choose `M(ε) = ε ^ (-r)` with `0 < r < p.toReal⁻¹`.

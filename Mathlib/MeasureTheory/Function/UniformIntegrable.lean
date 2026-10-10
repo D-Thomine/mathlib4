@@ -128,14 +128,12 @@ protected theorem add (hf : UnifIntegrable f p μ) (hg : UnifIntegrable g p μ) 
       ⨆ (i : ι) (s : Set α) (_ : μ s ≤ ε), eLpNorm (g i) p (μ.restrict s)))
   · rw [bot_eq_zero]; nth_rw 2 [← mul_zero p.LpAddConst]
     apply ENNReal.Tendsto.const_mul _ (.inr p.LpAddConst_lt_top.ne)
-    nth_rw 2 [← zero_add 0]
-    exact Tendsto.add hf hg
-  · apply Eventually.of_forall fun ε ↦ ?_
+    simpa using Tendsto.add hf hg
+  · refine Eventually.of_forall fun ε ↦ ?_
     simp only [Pi.add_apply, iSup_le_iff]
     intro i s hs hsμ
-    apply (eLpNorm_add_le' p).trans
-    apply mul_le_mul_right (add_le_add _ _) <;>
-    apply (le_iSup _ i).trans' ((le_iSup _ s).trans' (by simp [hsμ]))
+    grw [eLpNorm_add_le' p, add_le_add] <;>
+    exact (le_iSup _ i).trans' ((le_iSup _ s).trans' (by simp [hsμ]))
 
 protected theorem neg (hf : UnifIntegrable f p μ) : UnifIntegrable (-f) p μ := by
   refine ENNReal.tendsto_nhds_zero.2 fun ε hε ↦ ?_

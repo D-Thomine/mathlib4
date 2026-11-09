@@ -784,6 +784,10 @@ theorem Frequently.mp {p q : α → Prop} {f : Filter α} (h : ∃ᶠ x in f, p 
     (hpq : ∀ᶠ x in f, p x → q x) : ∃ᶠ x in f, q x :=
   mt (fun hq => hq.mp <| hpq.mono fun _ => mt) h
 
+theorem Frequently.mp' {p q : α → Prop} {f : Filter α} (h : ∃ᶠ x in f, p x → q x)
+    (hpq : ∀ᶠ x in f, p x) : ∃ᶠ x in f, q x :=
+  h.mp (hpq.mono fun _ hp hpq ↦ hpq hp)
+
 lemma frequently_congr {p q : α → Prop} {f : Filter α} (h : ∀ᶠ x in f, p x ↔ q x) :
     (∃ᶠ x in f, p x) ↔ ∃ᶠ x in f, q x :=
   ⟨fun h' ↦ h'.mp (h.mono fun _ ↦ Iff.mp), fun h' ↦ h'.mp (h.mono fun _ ↦ Iff.mpr)⟩
@@ -1414,3 +1418,74 @@ lemma compl_mem_comk {p : Set α → Prop} {he hmono hunion s} :
   simp
 
 end Filter
+
+namespace Mathlib.Tactic
+
+open Lean Meta Elab Tactic
+
+/--
+`test [h₁, ⋯, hₙ]` replaces a goal of the form `∃ᶠ x in l, P x` and terms
+`h₁ : ∃ᶠ x in l, P₁ x, h₂ : ∀ᶠ x in l, P₂ x, ⋯, hₙ : ∀ᶠ x in l, Pₙ x` with
+`∀ x, P₁ x → ⋯ → Pₙ x → P x`. There must be at most one frequent goal, and it must be the first
+of the list. The list is an optional parameter, `[]` being its default value.
+If no term is provided, the tactic defaults to applying `Filter.Frequently.of_forall`.
+
+`test [h₁, ⋯, hₙ] with a₁ a₂ ⋯ aₖ` is a short form for
+`{ test [h₁, ⋯, hₙ], intro a₁ a₂ ⋯ aₖ }`.
+
+`test [h₁, ⋯, hₙ] using e` is a short form for
+`{ test [h1, ⋯, hn], exact e }`.
+
+Combining both shortcuts is done by writing `test [h₁, ⋯, hₙ] with a₁ a₂ ⋯ aₖ using e`.
+Note that in this case, the `aᵢ` terms can be used in `e`.
+-/
+syntax (name := test) "test" (" [" term,* "]")?
+  (" with" (ppSpace colGt term:max)*)? (" using " term)? : tactic
+
+elab_rules : tactic
+| `(tactic| test $[[$[$args],*]]? $[with $wth*]? $[using $usingArg]?) => do
+  focus do
+    let config : ApplyConfig := {newGoals := ApplyNewGoals.nonDependentOnly}
+    let args := args.getD #[]
+    let e : Option (TSyntax `term) := args[0]?
+    match e with
+    | none =>
+      liftMetaTactic fun goal ↦ do
+        goal.apply (← mkConstWithFreshMVarLevels ``Filter.Frequently.of_forall) config
+    | some e =>
+      for f in args.eraseIdx! 0 |>.reverse do
+        let goal ← getMainGoal
+        replaceMainGoal <| ← goal.withContext <| runTermElab do
+          let m ← mkFreshExprMVar none
+          let lem ← Term.elabTermEnsuringType
+            (← ``(Filter.Frequently.mp' $(← Term.exprToSyntax m) $f)) (← goal.getType)
+          goal.assign lem
+          return [m.mvarId!]
+      let goal ← getMainGoal
+      replaceMainGoal <| ← goal.withContext <| runTermElab do
+        let m ← mkFreshExprMVar none
+        let lem ← Term.elabTermEnsuringType
+          (← ``(Filter.Frequently.mp $e $(← Term.exprToSyntax m))) (← goal.getType)
+        goal.assign lem
+        return [m.mvarId!]
+      evalTactic <|← `(tactic| try dsimp -zeta only [Set.mem_ofPred_eq]) -- Useful or not?
+      liftMetaTactic fun goal ↦ do
+        goal.apply (← mkConstWithFreshMVarLevels ``Filter.univ_mem') config
+    if let some l := wth then
+      evalTactic <|← `(tactic| intro $[$l]*)
+    if let some e := usingArg then
+      evalTactic <|← `(tactic| exact $e)
+
+lemma my_test {α : Type*} {l : Filter α} {P Q R : α → Prop} (h1 : ∃ᶠ x in l, P x)
+    (h2 : ∀ᶠ x in l, P x → Q x) (h3 : ∀ᶠ x in l, Q x → R x) :
+    ∃ᶠ x in l, R x := by
+  test [h1, h2, h3] with x hP hPQ hQR
+  exact hQR (hPQ hP)
+
+lemma before_my_test {α : Type*} {l : Filter α} {P Q R : α → Prop} (h1 : ∃ᶠ x in l, P x)
+    (h2 : ∀ᶠ x in l, P x → Q x) (h3 : ∀ᶠ x in l, Q x → R x) :
+    ∃ᶠ x in l, R x := by
+  refine h1.mp <| h2.mp <| h3.mp (Eventually.of_forall fun x hQR hPQ hP ↦ ?_)
+  exact hQR (hPQ hP)
+
+end Mathlib.Tactic
